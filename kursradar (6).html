@@ -1,0 +1,2654 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kursradar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: Kopfzeile mit Status, Watchlist-Karten, S&P-500-Tabelle, Übungsdepot */
+:root{
+  --bg:#f3f5f7; --panel:#ffffff; --fg:#14202b; --muted:#5d6b78; --line:#dde3e9;
+  --accent:#1f6feb; --up:#12805c; --down:#c4322b; --warn:#a86a00; --chip:#eef2f6;
+  --sans:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e141a; --panel:#161e26; --fg:#e4eaf0; --muted:#8b99a6; --line:#26323d;
+  --accent:#5b9cff; --up:#3ccf91; --down:#ff6b61; --warn:#f0b54a; --chip:#1f2a34; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e141a; --panel:#161e26; --fg:#e4eaf0; --muted:#8b99a6; --line:#26323d;
+  --accent:#5b9cff; --up:#3ccf91; --down:#ff6b61; --warn:#f0b54a; --chip:#1f2a34; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--sans);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 48px}
+.wrap{max-width:1180px;margin-inline:auto;display:grid;gap:20px}
+h1{font-size:1.6rem;margin:0;letter-spacing:-.01em}
+h2{font-size:1.1rem;margin:0}
+h3{font-size:.85rem;margin:0 0 4px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.muted{color:var(--muted)}
+.small-t{font-size:.82rem}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.85rem}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.dot.live{background:var(--up);animation:pulse 2s infinite}
+@media (prefers-reduced-motion:reduce){.dot.live{animation:none}}
+@keyframes pulse{50%{opacity:.35}}
+.note{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:8px;padding:12px 14px;font-size:.88rem}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:12px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input,select,button{font:inherit;font-size:.9rem;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:7px 10px;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{cursor:pointer;background:var(--chip);font-weight:600}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.small{padding:3px 8px;font-size:.8rem}
+.grow{flex:1 1 220px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:8px;min-width:0}
+.card.alert{border-color:var(--warn);box-shadow:0 0 0 2px color-mix(in srgb,var(--warn) 35%,transparent)}
+.card-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;min-width:0}
+.sym{font-weight:700;font-size:1.05rem}
+.cname{font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.price{font-family:var(--mono);font-size:1.45rem;font-weight:600;font-variant-numeric:tabular-nums}
+.chg{font-family:var(--mono);font-size:.85rem;padding:2px 7px;border-radius:5px;background:var(--chip)}
+.up{color:var(--up)} .down{color:var(--down)}
+svg.spark{width:100%;height:48px;display:block}
+.range{position:relative;height:6px;background:var(--chip);border-radius:3px}
+.range i{position:absolute;top:-3px;width:3px;height:12px;background:var(--fg);border-radius:2px;transform:translateX(-50%)}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;font-size:.78rem}
+.kv b{display:block;font-family:var(--mono);font-weight:600;font-size:.85rem;font-variant-numeric:tabular-nums}
+.alerts{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;font-size:.78rem}
+.alerts input{padding:4px 6px;font-size:.8rem;width:100%}
+.tbl{overflow-x:auto}
+.tbl.tall{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.85rem;min-width:560px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;background:var(--panel)}
+.tall th{position:sticky;top:0;z-index:1}
+th button{all:unset;cursor:pointer}
+th button:focus-visible{outline:2px solid var(--accent)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.nm{max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.star{all:unset;cursor:pointer;font-size:1rem;color:var(--muted);padding:0 4px}
+.star.on{color:var(--warn)}
+.star:focus-visible{outline:2px solid var(--accent)}
+.mini{display:inline-block;width:60px;height:5px;background:var(--chip);border-radius:3px;position:relative;vertical-align:middle}
+.mini i{position:absolute;top:-2px;width:3px;height:9px;background:var(--fg);border-radius:1px;transform:translateX(-50%)}
+.movers{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px}
+.movers ol{margin:0;padding:0;list-style:none;display:grid;gap:2px}
+.movers li{display:flex;justify-content:space-between;gap:8px;font-size:.85rem;padding:3px 0;border-bottom:1px dashed var(--line)}
+.progress{height:4px;background:var(--chip);border-radius:2px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent);width:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{background:var(--bg);border-radius:8px;padding:10px}
+.stat span{font-size:.75rem;color:var(--muted)} .stat b{display:block;font-family:var(--mono);font-size:1.15rem;font-variant-numeric:tabular-nums}
+#toasts{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));display:grid;gap:8px;z-index:20;max-width:min(360px,calc(100vw - 24px))}
+.toast{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:.85rem;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+details summary{cursor:pointer;font-weight:600}
+details p,details li{font-size:.88rem;max-width:70ch}
+.err{color:var(--down);font-size:.85rem}
+:root{--alarm:#e10600}
+#alarm{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;margin:0 0 16px;background:var(--alarm);color:#fff;border-radius:10px;box-shadow:0 8px 28px rgba(225,6,0,.45);animation:alarmflash 1s steps(2,start) infinite}
+@keyframes alarmflash{50%{background:#8a0000}}
+@media (prefers-reduced-motion:reduce){#alarm{animation:none}}
+.alarm-in{max-width:1180px;margin-inline:auto;padding:12px 14px;display:grid;gap:6px}
+.alarm-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:1.05rem;letter-spacing:.06em}
+#alarm button{background:#fff;color:#8a0000;border-color:#fff}
+#alarm ul{margin:0;padding-left:18px;font-size:.88rem;display:grid;gap:3px}
+.toast.red{background:var(--alarm);color:#fff;border-color:var(--alarm);border-left-color:#fff;font-weight:600}
+.red-t{color:var(--alarm);font-weight:700}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:8px}
+.mtile{border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:4px;background:var(--bg);min-width:0}
+.mtile .mlvl{font-size:.72rem;font-weight:800;padding:1px 8px;border-radius:99px;background:var(--chip)}
+.mtile.m-mid{border-color:var(--warn)} .mtile.m-mid .mlvl{background:var(--warn);color:#fff}
+.mtile.m-high{border-color:var(--alarm);box-shadow:0 0 0 2px var(--alarm)} .mtile.m-high .mlvl{background:var(--alarm);color:#fff}
+td.nhead{white-space:normal;min-width:260px;max-width:420px}
+td.nhead a{color:var(--fg)}
+.newsline{font-size:.75rem;padding:5px 8px;border-radius:6px;background:var(--chip)}
+.newsline.n-neg{background:var(--alarm);color:#fff;font-weight:600}
+.newsline.n-pos{border:1.5px solid var(--up);background:transparent}
+.daybox{display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px}
+.daybox.empty .dchart,.daybox.empty .dleg,.daybox.empty [data-k="dkv"],.daybox.empty [data-k="dpats"],.daybox.empty [data-k="bt"]{display:none}
+svg.dchart{width:100%;height:70px;display:block}
+.dc{fill:none;stroke:var(--fg);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.d50{fill:none;stroke:var(--accent);stroke-width:1.2;vector-effect:non-scaling-stroke}
+.d200{fill:none;stroke:var(--warn);stroke-width:1.2;vector-effect:non-scaling-stroke}
+.dleg{display:flex;gap:12px;color:var(--muted);font-size:.7rem}
+.dleg span::before{content:"";display:inline-block;width:12px;height:2px;margin-right:4px;vertical-align:middle;background:currentColor}
+.dleg .l-c::before{background:var(--fg)} .dleg .l-50::before{background:var(--accent)} .dleg .l-200::before{background:var(--warn)}
+.bt{font-size:.75rem;display:grid;gap:2px;font-variant-numeric:tabular-nums}
+.scanlist{display:grid;gap:8px}
+.scanrow{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.scanrow .rk{font-family:var(--mono);font-weight:700;color:var(--muted);text-align:center}
+.scanrow .nm{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;min-width:0}
+.scanrow .nm span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.scanrow .bar{height:4px;background:var(--chip);border-radius:2px;overflow:hidden;margin:5px 0}
+.scanrow .bar i{display:block;height:100%;background:var(--up)}
+.scanrow.avoid .bar i{background:var(--alarm)}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chips span{font-size:.72rem;padding:1px 7px;border-radius:99px;background:var(--chip)}
+.pats{display:flex;flex-wrap:wrap;gap:5px;font-size:.75rem}
+.pchip{padding:2px 8px;border-radius:99px;font-weight:700}
+.pc-red{background:var(--alarm);color:#fff}
+.pc-up{background:var(--up);color:#fff}
+.pc-upf{border:1.5px solid var(--up);color:var(--up)}
+.card.s-alarm{border-color:var(--alarm);box-shadow:0 0 0 3px var(--alarm);animation:cardflash 1s steps(2,start) infinite}
+@keyframes cardflash{50%{box-shadow:0 0 0 3px transparent}}
+@media (prefers-reduced-motion:reduce){.card.s-alarm{animation:none}}
+.sigbox{display:grid;gap:4px;padding:8px 10px;border-radius:8px;background:var(--chip)}
+.sigrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sig{font-weight:800;font-size:.85rem;letter-spacing:.06em;padding:3px 10px;border-radius:99px;background:var(--bg);color:var(--muted)}
+.sig.buy{background:var(--up);color:#fff}
+.sig.sell{background:var(--down);color:#fff}
+.sig.hold{background:var(--accent);color:#fff}
+.sig.warn{background:var(--warn);color:#fff}
+.score{font-family:var(--mono);font-size:.8rem}
+.meter{height:4px;background:var(--bg);border-radius:2px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent)}
+.why{font-size:.75rem;color:var(--muted);line-height:1.35}
+.lv{font-size:.75rem;font-family:var(--mono);display:flex;gap:10px;flex-wrap:wrap}
+.card.s-buy{border-color:var(--up);box-shadow:0 0 0 2px color-mix(in srgb,var(--up) 35%,transparent)}
+.card.s-sell{border-color:var(--down);box-shadow:0 0 0 2px color-mix(in srgb,var(--down) 35%,transparent)}
+label.chk{display:inline-flex;gap:6px;align-items:center;font-size:.88rem}
+</style>
+</head>
+<body>
+<div id="alarm" role="alert" hidden>
+  <div class="alarm-in">
+    <div class="alarm-head"><b>⚠ MUSTER-ALARM</b><button id="alarmOk" class="small">Gesehen</button></div>
+    <ul id="alarmList"></ul>
+  </div>
+</div>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>Kursradar</h1>
+    <div class="muted" style="font-size:.88rem">Alle S&amp;P-500-Aktien, Watchlist mit 30-Sekunden-Takt, Übungsdepot mit Spielgeld</div>
+  </div>
+  <div class="status">
+    <span><span class="dot" id="dot"></span> <span id="mode">Gestoppt</span></span>
+    <span class="mono muted" id="countdown"></span>
+    <span class="muted" id="last"></span>
+  </div>
+</header>
+
+<div class="note">Signale folgen festen Regeln: Trendfilter, Momentum, Einstieg mit Stop-Loss, Nachziehen des Stops, Ausstieg bei Trendbruch oder Kursziel. Der Stop begrenzt jeden Verlust auf ein festes Risiko, verhindert Verluste aber nicht. Die Signal-Bilanz unten misst laufend, wie gut die Regeln wirklich treffen.</div>
+
+<section class="panel" id="setup">
+  <h2>Datenquelle</h2>
+  <div class="row">
+    <input class="grow" id="key" type="password" placeholder="Finnhub API-Schlüssel einfügen" autocomplete="off" aria-label="Finnhub API-Schlüssel">
+    <button class="primary" id="startLive">Live starten</button>
+    <button id="startDemo">Demo mit simulierten Kursen</button>
+    <button id="stop">Stopp</button>
+  </div>
+  <div class="muted small-t">Finnhub (finnhub.io) ergänzt die Watchlist im 30-Sekunden-Takt. Ohne Alpaca lädt Finnhub auch den S&amp;P 500 reihum. Schlüssel bleiben nur in diesem Browser-Tab.</div>
+  <div class="row">
+    <input class="grow" id="alpKey" type="password" placeholder="Alpaca Key-ID" autocomplete="off" aria-label="Alpaca Key-ID">
+    <input class="grow" id="alpSec" type="password" placeholder="Alpaca Secret" autocomplete="off" aria-label="Alpaca Secret">
+    <label class="chk">Rundlauf
+      <select id="alpEvery" aria-label="Rundlauf Alpaca">
+        <option value="10">10 s</option><option value="15" selected>15 s</option><option value="30">30 s</option><option value="60">60 s</option>
+      </select></label>
+  </div>
+  <div class="muted small-t">Alpaca (alpaca.markets, kostenloser Basic-Plan): alle 503 Kurse in 6 Abrufen je Rundlauf über den IEX-Feed, dazu Nachrichten von Benzinga in Echtzeit. Limit laut Doku: 200 Abrufe pro Minute, 1 Stream-Verbindung. Nutze die Schlüssel eines Paper-Trading-Kontos.</div>
+  <div class="row">
+    <input class="grow" id="newsLlm" type="password" placeholder="Optional: Claude-API-Schlüssel für die Stimmungsbewertung" autocomplete="off" aria-label="Claude-API-Schlüssel">
+    <input id="newsModel" value="claude-haiku-5-5" aria-label="Modell" style="width:170px">
+    <label class="chk"><input type="checkbox" id="gdeltOn" checked> Makro-Lage (GDELT)</label>
+  </div>
+  <div class="row">
+    <input class="grow" id="tdKey" type="password" placeholder="Twelve Data API-Schlüssel (ein Jahr Tageskurse)" autocomplete="off" aria-label="Twelve Data API-Schlüssel">
+    <button id="loadHist">Historie laden</button>
+    <span class="muted small-t mono" id="histInfo"></span>
+  </div>
+  <div class="muted small-t">Kostenlos auf twelvedata.com: 800 Abrufe pro Tag, 8 pro Minute. Geladen wird ein Jahr Tageskurse für die Watchlist und die Top-5-Empfehlungen, eine Aktie alle 8 Sekunden. Im Demo-Modus wird die Historie simuliert.</div>
+  <div class="err" id="err" hidden></div>
+</section>
+
+<section class="panel">
+  <div class="row" style="justify-content:space-between">
+    <h2>Watchlist</h2>
+    <span class="muted small-t" id="favInfo"></span>
+  </div>
+  <div class="muted small-t">Aktien mit ★ in der S&amp;P-500-Liste landen hier und werden alle 30 Sekunden aktualisiert. Nur diese kannst du im Übungsdepot handeln.</div>
+  <div class="grid" id="cards"></div>
+</section>
+
+<section class="panel" id="scan">
+  <div class="row" style="justify-content:space-between">
+    <h2>Watchlist-Empfehlung</h2>
+    <span class="muted small-t mono" id="scanInfo">—</span>
+  </div>
+  <div class="muted small-t">Bewertet alle S&amp;P-500-Aktien danach, wie gut sie heute für die Signale und Chartmuster taugen: Stärke seit Eröffnung, Lage in der Tagesspanne, Stärke gegenüber dem eigenen Sektor, genug Bewegung ohne Überhitzung, haltende Kurslücken. Höchstens 2 Aktien je Sektor.</div>
+  <div class="row">
+    <button class="primary" id="scanTop">Top 5 übernehmen</button>
+    <label class="chk"><input type="checkbox" id="scanAuto"> Watchlist alle 15 Minuten automatisch optimieren</label>
+  </div>
+  <div class="scanlist" id="scanList"></div>
+  <details>
+    <summary class="small-t">Heute eher meiden</summary>
+    <div class="scanlist" id="scanAvoid" style="margin-top:8px"></div>
+  </details>
+</section>
+
+<section class="panel" id="sp">
+  <div class="row" style="justify-content:space-between">
+    <h2>S&amp;P 500</h2>
+    <span class="muted small-t mono" id="spInfo">—</span>
+  </div>
+  <div class="progress" aria-hidden="true"><i id="spBar"></i></div>
+  <div class="muted small-t" id="spNote"></div>
+
+  <div class="movers">
+    <div><h3>Stärkste heute</h3><ol id="topUp"></ol></div>
+    <div><h3>Schwächste heute</h3><ol id="topDown"></ol></div>
+    <div><h3>Sektoren heute (Durchschnitt)</h3><ol id="sectors"></ol></div>
+  </div>
+
+  <div class="row">
+    <input class="grow" id="q" type="search" placeholder="Suchen: Symbol oder Firmenname" aria-label="Suchen">
+    <select id="sec" aria-label="Sektor"><option value="">Alle Sektoren</option></select>
+    <label class="small-t row" style="gap:6px"><input type="checkbox" id="onlyLoaded"> nur geladene</label>
+  </div>
+  <div class="tbl tall">
+    <table id="spTable">
+      <thead><tr>
+        <th></th>
+        <th><button data-sort="s">Symbol</button></th>
+        <th><button data-sort="n">Firma</button></th>
+        <th><button data-sort="sec">Sektor</button></th>
+        <th class="num"><button data-sort="c">Kurs $</button></th>
+        <th class="num"><button data-sort="dp">Heute</button></th>
+        <th><button data-sort="pos">Tagesspanne</button></th>
+        <th class="num"><button data-sort="at">Stand</button></th>
+      </tr></thead>
+      <tbody id="spBody"></tbody>
+    </table>
+  </div>
+  <div class="muted small-t" id="spCount"></div>
+</section>
+
+<section class="panel" id="news">
+  <div class="row" style="justify-content:space-between">
+    <h2>Nachrichten &amp; Makro</h2>
+    <span class="muted small-t" id="newsInfo"></span>
+  </div>
+  <div class="muted small-t">Ablauf: Meldung kommt rein, Ticker und Thema werden zugeordnet, die Stimmung bewertet, dann misst die Seite die Kursreaktion nach 1, 5, 15 und 30 Minuten. „Vorlauf“ zeigt, wie stark sich der Kurs schon in den 5 Minuten vor der Meldung bewegt hat. Rot heißt: bereits eingepreist.</div>
+  <h3>Makro-Lage (GDELT, alle 20 Minuten)</h3>
+  <div class="mgrid" id="macro"></div>
+  <h3>Meldungen</h3>
+  <div class="tbl tall" style="max-height:380px">
+    <table>
+      <thead><tr><th>Zeit</th><th>Aktien</th><th>Schlagzeile</th><th>Thema</th><th class="num">Stimmung</th><th class="num">Verzög.</th><th class="num">Vorlauf</th><th class="num">+1 Min</th><th class="num">+5 Min</th><th class="num">+15 Min</th><th class="num">+30 Min</th><th class="num">Erste Bewegung</th></tr></thead>
+      <tbody id="newsBody"></tbody>
+    </table>
+  </div>
+  <h3>Wirkung je Thema</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Thema</th><th class="num">Meldungen</th><th class="num">Ø Verzögerung</th><th class="num">Eingepreist</th><th class="num">Ø Reaktion 5 Min</th><th class="num">Ø Reaktion 15 Min</th><th class="num">Richtung getroffen</th><th class="num">Ø erste Bewegung</th></tr></thead>
+      <tbody id="newsStats"></tbody>
+    </table>
+  </div>
+  <div class="muted small-t">Reaktion in Richtung der Stimmung gerechnet: positiv heißt, der Kurs ist so gelaufen, wie die Meldung erwarten ließ. „Erste Bewegung“: Minuten von der Veröffentlichung bis zur ersten Kursbewegung von 0,3 %.</div>
+  <h3>Makro-Ereignisse und Marktreaktion (Ø Tagesveränderung S&amp;P 500)</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Zeit</th><th>Thema</th><th>Stufe</th><th class="num">+15 Min</th><th class="num">+30 Min</th><th class="num">+60 Min</th></tr></thead>
+      <tbody id="macroEv"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel" id="patterns">
+  <div class="row" style="justify-content:space-between">
+    <h2>Chartmuster</h2>
+    <span class="muted small-t">nach Fidelity „Identifying Chart Patterns“ und Kerzenmustern</span>
+  </div>
+  <div class="muted small-t">Erkannt werden Kopf-Schulter, Doppel- und Dreifach-Top/-Boden, Dreiecke, Keile, Rechtecke, Flaggen, Tasse mit Henkel, Pipe Bottom, Kerzenmuster, enge Spannen und Kurslücken. Frühwarnung, bestätigter Bruch und Fehlausbruch lösen den roten Alarm aus.</div>
+  <h3>Erfolgsbilanz je Muster</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Muster</th><th class="num">Bestätigt</th><th class="num">Ziel erreicht</th><th class="num">Fehlausbruch</th><th class="num">Offen</th><th class="num">Quote</th></tr></thead>
+      <tbody id="patStats"></tbody>
+    </table>
+  </div>
+  <h3>Protokoll</h3>
+  <div class="tbl tall" style="max-height:320px">
+    <table>
+      <thead><tr><th>Zeit</th><th>Aktie</th><th>Muster</th><th>Meldung</th><th>Richtung</th><th>Verlässl.</th><th class="num">Marke</th><th class="num">Ziel</th><th>Ergebnis</th></tr></thead>
+      <tbody id="patLog"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel" id="backtest">
+  <div class="row" style="justify-content:space-between">
+    <h2>Backtest · 1 Jahr Tageskerzen</h2>
+    <span class="muted small-t">gleiche Regeln wie live, auf Tagesbasis</span>
+  </div>
+  <div class="muted small-t">Signale: Einstieg zum Tagesschluss ab Score 75, Stop 1,5× ATR, nachgezogen, Ziel 3× Risiko, Ausstieg bei Trendbruch. Muster: Kauf nach bestätigtem steigendem Muster mit Chance/Risiko ab 1,5, Ausstieg bei Stop, Ziel oder nach 30 Tagen. Ohne Gebühren. Trifft ein Tag Stop und Ziel zugleich, zählt der Stop.</div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Aktie</th><th>Tagestrend</th><th class="num">Sig. Trades</th><th class="num">Treffer</th><th class="num">PF</th><th class="num">Sig. Ergebnis</th><th class="num">Muster Trades</th><th class="num">Muster Ergebnis</th><th class="num">Nur Halten</th><th class="num">Max. Rückgang</th></tr></thead>
+      <tbody id="btBody"></tbody>
+    </table>
+  </div>
+  <h3>Muster in der Historie</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Muster</th><th class="num">Gefunden</th><th class="num">Ziel erreicht</th><th class="num">Fehlausbruch</th><th class="num">Ohne Ergebnis (30 T.)</th><th class="num">Quote</th></tr></thead>
+      <tbody id="btPat"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel" id="signals">
+  <div class="row" style="justify-content:space-between">
+    <h2>Signale</h2>
+    <span class="muted small-t" id="sigInfo"></span>
+  </div>
+  <div class="row">
+    <label class="chk"><input type="checkbox" id="auto"> Auto-Handel im Übungsdepot</label>
+    <label class="chk"><input type="checkbox" id="sound"> Ton bei Signal</label>
+    <label class="chk">Risiko pro Trade
+      <select id="risk" aria-label="Risiko pro Trade">
+        <option value="0.005">0,5 %</option><option value="0.01" selected>1 %</option><option value="0.02">2 %</option>
+      </select></label>
+    <label class="chk">Hebel
+      <select id="autoLev" aria-label="Hebel für Auto-Handel">
+        <option value="1" selected>ohne</option><option value="2">2</option><option value="5">5</option><option value="10">10</option>
+      </select></label>
+  </div>
+  <div class="stats">
+    <div class="stat"><span>Signal-Trades</span><b id="gN">—</b></div>
+    <div class="stat"><span>Trefferquote</span><b id="gHit">—</b></div>
+    <div class="stat"><span>Ø Gewinn</span><b id="gWin">—</b></div>
+    <div class="stat"><span>Ø Verlust</span><b id="gLoss">—</b></div>
+    <div class="stat"><span>Profit-Faktor</span><b id="gPf">—</b></div>
+    <div class="stat"><span>Summe aller Trades</span><b id="gSum">—</b></div>
+  </div>
+  <div class="tbl tall" style="max-height:320px">
+    <table>
+      <thead><tr><th>Zeit</th><th>Aktie</th><th>Signal</th><th class="num">Kurs</th><th>Grund</th><th class="num">Ergebnis</th></tr></thead>
+      <tbody id="sigLog"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Übungsdepot (Spielgeld)</h2>
+  <div class="muted small-t">Startkapital 10.000 $. Mit Hebel simulierst du ein Knock-out-Zertifikat: Fällt der Kurs um 1/Hebel unter den Einstieg, ist der Einsatz komplett weg.</div>
+  <div class="stats">
+    <div class="stat"><span>Gesamtwert</span><b id="sTotal">—</b></div>
+    <div class="stat"><span>Freies Spielgeld</span><b id="sCash">—</b></div>
+    <div class="stat"><span>Ergebnis gesamt</span><b id="sPnl">—</b></div>
+    <div class="stat"><span>Abgeschlossene Trades</span><b id="sTrades">—</b></div>
+    <div class="stat"><span>Davon im Plus</span><b id="sWin">—</b></div>
+    <div class="stat"><span>Ausgeknockt</span><b id="sKo">—</b></div>
+  </div>
+  <div class="row">
+    <select id="tSym" aria-label="Aktie"></select>
+    <input id="tAmt" type="number" min="10" step="10" value="500" aria-label="Einsatz in Dollar" style="width:110px">
+    <select id="tLev" aria-label="Hebel">
+      <option value="1">ohne Hebel (Aktie)</option>
+      <option value="2">Hebel 2 (KO −50 %)</option>
+      <option value="5">Hebel 5 (KO −20 %)</option>
+      <option value="10">Hebel 10 (KO −10 %)</option>
+      <option value="20">Hebel 20 (KO −5 %)</option>
+    </select>
+    <button class="primary" id="buy">Long kaufen</button>
+    <button id="reset">Depot zurücksetzen</button>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Aktie</th><th class="num">Einstieg</th><th class="num">Aktuell</th><th class="num">KO-Schwelle</th><th class="num">Hebel</th><th class="num">Einsatz</th><th class="num">Ergebnis</th><th></th></tr></thead>
+      <tbody id="pos"></tbody>
+    </table>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Zeit</th><th>Aktie</th><th>Ereignis</th><th class="num">Ergebnis</th></tr></thead>
+      <tbody id="hist"></tbody>
+    </table>
+  </div>
+</section>
+
+<details class="panel">
+  <summary>So liest du die Anzeigen</summary>
+  <ul>
+    <li><b>Ladetakt</b>: Finnhub erlaubt gratis 60 Abrufe pro Minute. Die Watchlist bekommt alle 30 Sekunden neue Kurse, der Rest des S&amp;P 500 wird reihum nachgeladen. Ein kompletter Durchlauf dauert gut 10 Minuten. Die Spalte „Stand“ zeigt, wie aktuell jede Zeile ist.</li>
+    <li><b>Trend</b>: Vergleich des Durchschnitts der letzten 5 Abrufe mit dem der letzten 20. Ein Aufwärtstrend heißt nur, dass der Kurs zuletzt gestiegen ist.</li>
+    <li><b>RSI</b> (Relative-Stärke-Index, 0–100, über 14 Abrufe): über 70 gilt als „stark gestiegen“, unter 30 als „stark gefallen“. Er braucht etwa 7 Minuten Daten.</li>
+    <li><b>Schwankung</b>: durchschnittliche Kursänderung pro Abruf. Hohe Schwankung bedeutet mehr Chance und mehr Risiko, besonders mit Hebel.</li>
+    <li><b>Signale</b>: KAUFEN ab Score 75/100, wenn EMA9 über EMA21 liegt und der RSI unter 72 ist. Danach HALTEN mit Stop (1,5× durchschnittliche Bewegung unter Einstieg), der mit dem Kurs nachgezogen wird und ab +1× Risiko auf Einstand springt. VERKAUFEN bei Stop, Kursziel (3× Risiko) oder Trendbruch. HALTEN · ACHTUNG warnt früh, wenn das Momentum nachlässt oder der Kurs nahe am Stop ist.</li>
+    <li><b>Auto-Handel</b>: kauft und verkauft im Übungsdepot automatisch nach den Signalen. Die Positionsgröße ergibt sich aus deinem Risiko pro Trade: Wird der Stop erreicht, verlierst du etwa diesen Anteil des Depots.</li>
+    <li><b>Signal-Bilanz</b>: Trefferquote allein sagt wenig. Entscheidend ist der Profit-Faktor (Summe Gewinne ÷ Summe Verluste). Über 1 heißt, die Regeln verdienen unterm Strich.</li>
+    <li><b>Chartmuster</b>: Aus je 4 Abrufen entsteht eine 2-Minuten-Kerze. Hoch- und Tiefpunkte daraus ergeben Muster wie Kopf-Schulter oder Dreiecke. „Bildet sich“ löst die rote Frühwarnung aus, „bestätigt“ gilt erst nach dem Bruch der Marke (Nackenlinie, Unterstützung, Trendlinie). Kursziel nach der Messregel: Musterhöhe ab Ausbruchspunkt. Kehrt der Kurs hinter die Marke zurück, meldet die Seite einen Fehlausbruch.</li>
+    <li><b>Muster und Signale</b>: Fallende Muster blockieren Kaufsignale und ziehen den Stop offener Trades eng nach. Ein bestätigtes fallendes Muster löst VERKAUFEN aus. Ein bestätigtes steigendes Muster löst KAUFEN aus, wenn das Kursziel mindestens 1,5-mal so weit weg ist wie der Stop.</li>
+    <li><b>Datenquellen</b>: Alpaca lädt alle 503 Aktien im gewählten Rundlauf (je 100 Symbole pro Abruf, IEX-Feed: Kurse nur von der Börse IEX, Tageshoch und -tief können leicht abweichen). Finnhub ergänzt die Watchlist. Die Signale arbeiten weiter im 30-Sekunden-Takt, schnellere Kurse aktualisieren nur die Anzeige.</li>
+    <li><b>Nachrichten</b>: Alpaca News (Benzinga) per Stream. Stimmung per Wortliste oder, mit Claude-Schlüssel, per LLM. Positive Meldungen geben bis zu 15 Punkte, negative ziehen ab. Eine stark negative Meldung zu einer Watchlist-Aktie löst den roten NEWS-ALARM aus, sperrt Käufe und zieht offene Stops nach. Ist der Kurs schon vor der Meldung in ihre Richtung gelaufen, zählt sie nur halb. Sobald je Thema 8 Messungen vorliegen, wird das Gewicht an die gemessene Trefferquote angepasst.</li>
+    <li><b>Makro (GDELT)</b>: Fünf Themen ohne Ticker. „Aufmerksamkeit“ ist die aktuelle Berichterstattung im Verhältnis zum 24-Stunden-Schnitt, „Ton“ die durchschnittliche Stimmung der Artikel (unter 0 negativ). Bei erhöhter oder hoher Stufe gibt es Abzug, stärker für die betroffenen Sektoren, und einen roten MAKRO-ALARM.</li>
+    <li><b>Historie</b>: Ein Jahr Tageskerzen von Twelve Data je Watchlist-Aktie. Daraus kommen 50- und 200-Tage-Linie, Tagesmuster und der Backtest. Aufwärtstrend auf Tagesbasis (Kurs über 50-Tage-Linie über 200-Tage-Linie) gibt Pluspunkte, Kurs unter der 200-Tage-Linie Abzug. Ein bestätigtes fallendes Tagesmuster sperrt Käufe und löst Verkauf aus. Lädst du die Seite neu, wird die Historie neu geladen (1 Abruf je Aktie).</li>
+    <li><b>Backtest lesen</b>: PF (Profit-Faktor) über 1 heißt, die Regeln haben im letzten Jahr unterm Strich verdient. Vergleiche das Ergebnis immer mit „Nur Halten“. Wenige Trades (unter 10) sind wenig aussagekräftig.</li>
+    <li><b>Watchlist-Empfehlung</b>: Score aus Stärke seit Eröffnung (20), Lage in der Tagesspanne (20), Tagesveränderung zwischen +0,5 und +4 % (15), Schwankung 1,5–5 % (15), Stärke gegenüber dem Sektor (15), haltende Kurslücke (10) und letzter Kursbewegung (5). Abzüge für Überhitzung über +6 % und fallende Muster. Im Live-Betrieb zählen nur Kurse, die höchstens 25 Minuten alt sind.</li>
+    <li><b>Stärkste/Schwächste heute</b>: Tagesveränderung gegenüber dem Vortagesschluss.</li>
+    <li>Kurse in US-Dollar. US-Handelszeit ist bei uns meist 15:30–22:00 Uhr, außerhalb bewegen sich die Kurse kaum. Die S&amp;P-500-Liste ist der Stand von November 2026.</li>
+  </ul>
+</details>
+
+</div>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+// Mustererkennung nach Fidelity "Identifying Chart Patterns" (Kirkpatrick) plus gängige Ergänzungen.
+// Arbeitet auf Kerzen aus den 30-Sekunden-Abrufen (4 Abrufe = 1 Kerze = 2 Minuten).
+window.Patterns = (() => {
+  const BAR = 4;
+  const REL_W = {hoch:20, mittel:12, niedrig:5};
+  const f = (v) => v.toLocaleString("de-AT", {minimumFractionDigits:2, maximumFractionDigits:2});
+  const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+
+  function toBars(hist) {
+    const out = []; let cur = null;
+    for (const h of hist) {
+      const id = Math.floor(h.i / BAR);
+      if (!cur || cur.id !== id) { cur = {id, o:h.p, h:h.p, l:h.p, c:h.p, first:h.i, n:0}; out.push(cur); }
+      cur.h = Math.max(cur.h, h.p); cur.l = Math.min(cur.l, h.p); cur.c = h.p; cur.n++;
+    }
+    return out;
+  }
+  function pivots(B, k = 2) {
+    const P = [];
+    const push = (x) => {
+      const last = P[P.length - 1];
+      if (last && last.t === x.t) { if ((x.t === "H" && x.p >= last.p) || (x.t === "L" && x.p <= last.p)) P[P.length - 1] = x; }
+      else P.push(x);
+    };
+    for (let i = k; i < B.length - k; i++) {
+      let isH = true, isL = true;
+      for (let j = i - k; j < i; j++) { if (B[j].h >= B[i].h) isH = false; if (B[j].l <= B[i].l) isL = false; }
+      for (let j = i + 1; j <= i + k; j++) { if (B[j].h > B[i].h) isH = false; if (B[j].l < B[i].l) isL = false; }
+      if (isH) push({i, p:B[i].h, t:"H", id:B[i].id});
+      if (isL) push({i, p:B[i].l, t:"L", id:B[i].id});
+    }
+    return P;
+  }
+  function fit(pts) {
+    const n = pts.length, mx = mean(pts.map((p) => p.i)), my = mean(pts.map((p) => p.p));
+    let num = 0, den = 0; for (const p of pts) { num += (p.i - mx) * (p.p - my); den += (p.i - mx) ** 2; }
+    const s = den ? num / den : 0; return {s, a: my - s * mx, at: (i) => my - s * mx + s * i};
+  }
+
+  function detect(hist, q) { return detectBars(toBars(hist), q); }
+  function detectBars(B, q) {
+    const n = B.length, out = [];
+    if (n < 16) return {bars:B, list:out};
+    const last = B[n - 1], c = last.c;
+    const atr = Math.max(mean(B.slice(-14).map((b) => b.h - b.l)), c * 0.0006);
+    const tol = 0.6 * atr, filt = 0.25 * atr;
+    const P = pivots(B);
+    const highAfter = (i) => Math.max(...B.slice(i + 1).map((b) => b.h), -Infinity);
+    const lowAfter = (i) => Math.min(...B.slice(i + 1).map((b) => b.l), Infinity);
+    const add = (o) => out.push(Object.assign({atr, tol}, o));
+
+    // ---- Doppel-/Dreifach-Top, Kopf-Schulter (Top) ----
+    const lastIdx = (t) => { for (let j = P.length - 1; j >= 0; j--) if (P[j].t === t) return j; return -1; };
+    const jH = lastIdx("H");
+    if (jH >= 4 && n - 1 - P[jH].i <= 30) {
+      const [H1, L1, H2, L2, H3] = P.slice(jH - 4, jH + 1);
+      const hs = [H1.p, H2.p, H3.p], top = Math.max(...hs);
+      if (highAfter(H3.i) <= top + tol) {
+        if (H2.p > Math.max(H1.p, H3.p) + tol && Math.abs(H1.p - H3.p) <= 2 * tol && Math.max(L1.p, L2.p) < Math.min(H1.p, H3.p) - tol) {
+          const neck = (i) => L1.p + (L2.p - L1.p) * (i - L1.i) / ((L2.i - L1.i) || 1);
+          const nk = neck(n - 1), target = nk - (H2.p - neck(H2.i));
+          if (c > target && c < H3.p - tol) add({key:"hs-top-" + H1.id, name:"Kopf-Schulter-Top", dir:"down", rel:"hoch",
+            status: c < nk - filt ? "confirmed" : "forming", level:nk, target, inval:H3.p,
+            text: c < nk - filt ? "Nackenlinie gebrochen" : "Bruch unter Nackenlinie " + f(nk) + " bestätigt",
+            lines:[[L1.i, L1.p, n - 1, nk], [H1.i, H1.p, H2.i, H2.p], [H2.i, H2.p, H3.i, H3.p]]});
+        } else if (Math.max(...hs) - Math.min(...hs) <= 1.5 * tol && Math.max(L1.p, L2.p) < Math.min(...hs) - 2 * tol) {
+          const nk = Math.min(L1.p, L2.p), target = nk - (top - nk);
+          if (c > target && c < H3.p - tol) add({key:"tt-" + H1.id, name:"Dreifach-Top", dir:"down", rel:"mittel",
+            status: c < nk - filt ? "confirmed" : "forming", level:nk, target, inval:top,
+            text: c < nk - filt ? "Unterstützung gebrochen" : "Bruch unter " + f(nk) + " bestätigt",
+            lines:[[H1.i, top, H3.i, top], [L1.i, nk, n - 1, nk]]});
+        }
+      }
+    }
+    if (jH >= 2 && n - 1 - P[jH].i <= 30 && !out.some((o) => o.key.startsWith("hs-top") || o.key.startsWith("tt-"))) {
+      const [H1, L, H2] = P.slice(jH - 2, jH + 1), top = Math.max(H1.p, H2.p);
+      if (Math.abs(H1.p - H2.p) <= tol && L.p < Math.min(H1.p, H2.p) - 2 * tol && H2.i - H1.i >= 4 && highAfter(H2.i) <= top + tol) {
+        const target = L.p - (top - L.p);
+        if (c > target && c < H2.p - tol) add({key:"dt-" + H1.id, name:"Doppel-Top", dir:"down", rel:"mittel",
+          status: c < L.p - filt ? "confirmed" : "forming", level:L.p, target, inval:top,
+          text: c < L.p - filt ? "Unterstützung gebrochen" : "Bruch unter " + f(L.p) + " bestätigt",
+          lines:[[H1.i, H1.p, H2.i, H2.p], [L.i, L.p, n - 1, L.p]]});
+      }
+    }
+    // ---- Doppel-/Dreifach-Boden, inverse Kopf-Schulter ----
+    const jL = lastIdx("L");
+    if (jL >= 4 && n - 1 - P[jL].i <= 30) {
+      const [L1, H1, L2, H2, L3] = P.slice(jL - 4, jL + 1);
+      const ls = [L1.p, L2.p, L3.p], bot = Math.min(...ls);
+      if (lowAfter(L3.i) >= bot - tol) {
+        if (L2.p < Math.min(L1.p, L3.p) - tol && Math.abs(L1.p - L3.p) <= 2 * tol && Math.min(H1.p, H2.p) > Math.max(L1.p, L3.p) + tol) {
+          const neck = (i) => H1.p + (H2.p - H1.p) * (i - H1.i) / ((H2.i - H1.i) || 1);
+          const nk = neck(n - 1), target = nk + (neck(L2.i) - L2.p);
+          if (c < target && c > L3.p + tol) add({key:"hs-bot-" + L1.id, name:"Inverse Kopf-Schulter", dir:"up", rel:"mittel",
+            status: c > nk + filt ? "confirmed" : "forming", level:nk, target, inval:L3.p,
+            text: c > nk + filt ? "Nackenlinie überwunden" : "Ausbruch über " + f(nk) + " bestätigt",
+            lines:[[H1.i, H1.p, n - 1, nk], [L1.i, L1.p, L2.i, L2.p], [L2.i, L2.p, L3.i, L3.p]]});
+        } else if (Math.max(...ls) - Math.min(...ls) <= 1.5 * tol && Math.min(H1.p, H2.p) > Math.max(...ls) + 2 * tol) {
+          const nk = Math.max(H1.p, H2.p), target = nk + (nk - bot);
+          if (c < target && c > L3.p + tol) add({key:"tb-" + L1.id, name:"Dreifach-Boden", dir:"up", rel:"mittel",
+            status: c > nk + filt ? "confirmed" : "forming", level:nk, target, inval:bot,
+            text: c > nk + filt ? "Widerstand überwunden" : "Ausbruch über " + f(nk) + " bestätigt",
+            lines:[[L1.i, bot, L3.i, bot], [H1.i, nk, n - 1, nk]]});
+        }
+      }
+    }
+    if (jL >= 2 && n - 1 - P[jL].i <= 30 && !out.some((o) => o.key.startsWith("hs-bot") || o.key.startsWith("tb-"))) {
+      const [L1, H, L2] = P.slice(jL - 2, jL + 1), bot = Math.min(L1.p, L2.p);
+      if (Math.abs(L1.p - L2.p) <= tol && H.p > Math.max(L1.p, L2.p) + 2 * tol && L2.i - L1.i >= 4 && lowAfter(L2.i) >= bot - tol) {
+        const target = H.p + (H.p - bot);
+        if (c < target && c > L2.p + tol) add({key:"db-" + L1.id, name:"Doppel-Boden", dir:"up", rel:"mittel",
+          status: c > H.p + filt ? "confirmed" : "forming", level:H.p, target, inval:bot,
+          text: c > H.p + filt ? "Widerstand überwunden" : "Ausbruch über " + f(H.p) + " bestätigt",
+          lines:[[L1.i, L1.p, L2.i, L2.p], [H.i, H.p, n - 1, H.p]]});
+      }
+    }
+
+    // ---- Dreiecke, Keile, Rechteck ----
+    const Hs = P.filter((p) => p.t === "H" && p.i >= n - 40).slice(-4), Ls = P.filter((p) => p.t === "L" && p.i >= n - 40).slice(-4);
+    if (Hs.length >= 2 && Ls.length >= 2) {
+      const fh = fit(Hs), fl = fit(Ls), i0 = Math.min(Hs[0].i, Ls[0].i), span = n - 1 - i0;
+      const okFit = Hs.every((p) => Math.abs(fh.at(p.i) - p.p) <= tol) && Ls.every((p) => Math.abs(fl.at(p.i) - p.p) <= tol);
+      const up = fh.at(n - 1), lo = fl.at(n - 1), h0 = fh.at(i0) - fl.at(i0);
+      if (okFit && up > lo && h0 > 3 * tol && span >= 10) {
+        const kind = (s) => Math.abs(s * span) < tol ? "flat" : s > 0 ? "rise" : "fall";
+        const kh = kind(fh.s), kl = kind(fl.s), touches = Hs.length + Ls.length;
+        let name = null, bias = "either", rel = "mittel", wedge = false;
+        if (kh === "flat" && kl === "flat") { name = "Rechteck"; rel = "niedrig"; }
+        else if (kh === "flat" && kl === "rise") { name = "Aufsteigendes Dreieck"; bias = "up"; }
+        else if (kh === "fall" && kl === "flat") { name = "Absteigendes Dreieck"; bias = "down"; }
+        else if (kh === "fall" && kl === "rise") { name = "Symmetrisches Dreieck"; }
+        else if (kh === "rise" && kl === "rise" && fl.s > fh.s && touches >= 5) { name = "Steigender Keil"; bias = "down"; rel = "niedrig"; wedge = true; }
+        else if (kh === "fall" && kl === "fall" && fh.s < fl.s && touches >= 5) { name = "Fallender Keil"; bias = "up"; rel = "niedrig"; wedge = true; }
+        if (name) {
+          const lowest = Math.min(...Ls.map((p) => p.p));
+          const lines = [[i0, fh.at(i0), n - 1, up], [i0, fl.at(i0), n - 1, lo]];
+          const base = {key:"tri-" + name + "-" + B[i0].id, name, rel, lines};
+          if (c > up + filt) add(Object.assign(base, {dir:"up", status:"confirmed", level:up, target: up + h0, inval: lo, text:"Ausbruch nach oben"}));
+          else if (c < lo - filt) add(Object.assign(base, {dir:"down", status:"confirmed", level:lo, target: wedge ? lowest : lo - h0, inval: up, text:"Ausbruch nach unten"}));
+          else add(Object.assign(base, {dir:bias, status:"forming", level: bias === "down" ? lo : up, target: bias === "down" ? lo - h0 : up + h0, inval: bias === "down" ? up : lo,
+            text: "Grenzen " + f(lo) + " / " + f(up) + (bias === "up" ? ", meist Ausbruch nach oben" : bias === "down" ? ", meist Ausbruch nach unten" : ", Richtung offen")}));
+        }
+      }
+    }
+
+    // ---- Flagge / Wimpel ----
+    for (let m = 4; m <= 10 && n - 1 - m - 6 >= 0; m++) {
+      const cons = B.slice(n - 1 - m, n - 1), poleStart = B[n - 1 - m - 6].o, poleEnd = cons[0].c, move = poleEnd - poleStart;
+      const ch = Math.max(...cons.map((b) => b.h)), cl = Math.min(...cons.map((b) => b.l));
+      if (Math.abs(move) < 5 * atr || ch - cl > 0.5 * Math.abs(move)) continue;
+      if (move > 0 && cl > poleStart + 0.5 * move) {
+        const target = cl + (ch - poleStart);
+        add({key:"flag-up-" + B[n - 1 - m].id, name:"Bullenflagge", dir:"up", rel:"mittel", status: c > ch + filt ? "confirmed" : "forming",
+          level:ch, target, inval:cl, text: c > ch + filt ? "Ausbruch aus der Flagge" : "Ausbruch über " + f(ch) + " erwartet",
+          lines:[[n - 1 - m - 6, poleStart, n - 1 - m, poleEnd], [n - 1 - m, ch, n - 1, ch], [n - 1 - m, cl, n - 1, cl]]});
+        break;
+      }
+      if (move < 0 && ch < poleStart + 0.5 * move) {
+        const target = ch - (poleStart - cl);
+        add({key:"flag-down-" + B[n - 1 - m].id, name:"Bärenflagge", dir:"down", rel:"hoch", status: c < cl - filt ? "confirmed" : "forming",
+          level:cl, target, inval:ch, text: c < cl - filt ? "Ausbruch nach unten" : "Bruch unter " + f(cl) + " erwartet",
+          lines:[[n - 1 - m - 6, poleStart, n - 1 - m, poleEnd], [n - 1 - m, ch, n - 1, ch], [n - 1 - m, cl, n - 1, cl]]});
+        break;
+      }
+    }
+
+    // ---- Tasse mit Henkel ----
+    if (n >= 30) {
+      const seg0 = Math.max(0, n - 45);
+      for (let hl = 3; hl <= 8; hl++) {
+        const cupEnd = n - 1 - hl, len = cupEnd - seg0; if (len < 18) break;
+        const q1 = seg0 + Math.floor(len / 4), q3 = seg0 + Math.floor(len * 3 / 4);
+        const maxIn = (a, b) => { let k = a; for (let i = a; i < b; i++) if (B[i].h > B[k].h) k = i; return k; };
+        const minIn = (a, b) => { let k = a; for (let i = a; i < b; i++) if (B[i].l < B[k].l) k = i; return k; };
+        const li = maxIn(seg0, q1), ri = maxIn(q3, cupEnd), bi = minIn(q1, q3);
+        const left = B[li].h, right = B[ri].h, bottom = B[bi].l, depth = Math.min(left, right) - bottom;
+        if (Math.abs(left - right) > 2 * tol || depth < 4 * atr) continue;
+        let round = 0; for (let i = li; i <= ri; i++) if (B[i].l <= bottom + 0.3 * depth) round++;
+        if (round < 4) continue;
+        const handle = B.slice(cupEnd, n - 1), hLow = Math.min(...handle.map((b) => b.l)), hHigh = Math.max(...handle.map((b) => b.h));
+        if (hLow < right - depth / 2 || hHigh > Math.max(left, right) + filt) continue;
+        const lip = Math.max(left, right);
+        add({key:"cup-" + B[li].id, name:"Tasse mit Henkel", dir:"up", rel:"mittel", status: c > lip + filt ? "confirmed" : "forming",
+          level:lip, target: lip + (right - bottom), inval:hLow, text: c > lip + filt ? "Ausbruch über beide Ränder" : "Ausbruch über " + f(lip) + " erwartet",
+          lines:[[li, left, ri, right], [cupEnd, hLow, n - 1, hLow]]});
+        break;
+      }
+    }
+
+    // ---- Kerzenmuster (letzte abgeschlossene Kerzen, aktiviert durch Ausbruch) ----
+    if (n >= 12) {
+      const b1 = B[n - 3], b2 = B[n - 2];
+      const prior = B[n - 11].c, trendBefore = (b1.c - prior) / prior, downBefore = trendBefore < -0.002, upBefore = trendBefore > 0.002;
+      const body = (b) => Math.abs(b.c - b.o), rng = (b) => b.h - b.l, bull = (b) => b.c > b.o, bear = (b) => b.c < b.o;
+      const upSh = (b) => b.h - Math.max(b.o, b.c), loSh = (b) => Math.min(b.o, b.c) - b.l;
+      const candle = (name, dir, rel, bar, text) => {
+        const lvl = dir === "up" ? bar.h : dir === "down" ? bar.l : null;
+        let status = "forming";
+        if (dir === "up" && c > bar.h + filt) status = "confirmed";
+        if (dir === "down" && c < bar.l - filt) status = "confirmed";
+        add({key:"cdl-" + name + "-" + bar.id, name, dir, rel, status, level:lvl ?? bar.c,
+          target: dir === "up" ? c + 2 * atr : dir === "down" ? c - 2 * atr : null, inval: dir === "up" ? bar.l : dir === "down" ? bar.h : null,
+          text: status === "confirmed" ? "durch Ausbruch aktiviert" : text, lines:[]});
+      };
+      if (rng(b2) > 0.5 * atr) {
+        if (body(b2) <= 0.1 * rng(b2)) candle("Doji", "either", "niedrig", b2, "Unentschlossenheit, mögliche Wende");
+        else if (loSh(b2) >= 2 * body(b2) && upSh(b2) <= 0.3 * rng(b2)) {
+          if (downBefore) candle("Hammer", "up", "niedrig", b2, "Aktiv bei Ausbruch über " + f(b2.h));
+          else if (upBefore) candle("Hanging Man", "down", "niedrig", b2, "Aktiv bei Bruch unter " + f(b2.l));
+        } else if (upSh(b2) >= 2 * body(b2) && loSh(b2) <= 0.3 * rng(b2)) {
+          if (upBefore) candle("Shooting Star", "down", "mittel", b2, "Aktiv bei Bruch unter " + f(b2.l));
+          else if (downBefore) candle("Inverted Hammer", "up", "mittel", b2, "Aktiv bei Ausbruch über " + f(b2.h));
+        }
+      }
+      if (body(b1) > 0.3 * atr && body(b2) > body(b1)) {
+        if (bear(b1) && bull(b2) && b2.o <= b1.c && b2.c >= b1.o && downBefore) candle("Bullish Engulfing", "up", "mittel", b2, "Aktiv bei Ausbruch über " + f(b2.h));
+        if (bull(b1) && bear(b2) && b2.o >= b1.c && b2.c <= b1.o && upBefore) candle("Bearish Engulfing", "down", "mittel", b2, "Aktiv bei Bruch unter " + f(b2.l));
+      }
+      if (body(b1) > 0.5 * atr) {
+        const mid = (b1.o + b1.c) / 2;
+        if (bear(b1) && bull(b2) && b2.o < b1.c && b2.c > mid && b2.c < b1.o && downBefore) candle("Piercing Line", "up", "mittel", b2, "Aktiv bei Ausbruch über " + f(b2.h));
+        if (bull(b1) && bear(b2) && b2.o > b1.c && b2.c < mid && b2.c > b1.o && upBefore) candle("Dark Cloud Cover", "down", "mittel", b2, "Aktiv bei Bruch unter " + f(b2.l));
+        if (body(b2) < 0.5 * body(b1) && Math.max(b2.o, b2.c) <= Math.max(b1.o, b1.c) && Math.min(b2.o, b2.c) >= Math.min(b1.o, b1.c) && bull(b1) !== bull(b2))
+          candle("Harami", "either", "niedrig", b2, "Richtung offen");
+      }
+      // Pipe Bottom (Zwei-Kerzen-Umkehr)
+      if (downBefore && rng(b1) >= 1.5 * atr && rng(b2) >= 1.5 * atr && Math.abs(b1.l - b2.l) <= tol && (b1.c - b1.l) <= 0.25 * rng(b1) && b2.c >= b2.l + rng(b2) / 2) {
+        const hi = Math.max(b1.h, b2.h);
+        add({key:"pipe-" + b1.id, name:"Pipe Bottom", dir:"up", rel:"hoch", status: c > hi + filt ? "confirmed" : "forming",
+          level:hi, target: hi + (hi - Math.min(b1.l, b2.l)), inval: Math.min(b1.l, b2.l), text: c > hi + filt ? "Ausbruch über die zweite Kerze" : "Ausbruch über " + f(hi) + " erwartet", lines:[]});
+      }
+      // NR4 / Inside Bar: niedrige Schwankung vor möglichem Ausbruch
+      const r4 = B.slice(n - 5, n - 2).map(rng);
+      if (rng(b2) < Math.min(...r4) && rng(b2) > 0) {
+        const brk = c > b2.h + filt ? "up" : c < b2.l - filt ? "down" : null;
+        add({key:"nr4-" + b2.id, name: (b2.h <= b1.h && b2.l >= b1.l) ? "Inside Bar / NR4" : "NR4", dir: brk || "either", rel:"niedrig",
+          status: brk ? "confirmed" : "forming", level: brk === "down" ? b2.l : b2.h, target: brk === "up" ? c + 2 * atr : brk === "down" ? c - 2 * atr : null,
+          inval: brk === "up" ? b2.l : brk === "down" ? b2.h : null, text: brk ? "Ausbruch aus enger Spanne" : "Enge Spanne, Ausbruch zwischen " + f(b2.l) + " und " + f(b2.h), lines:[]});
+      }
+    }
+
+    // ---- Kurslücke (Gap) zur Eröffnung ----
+    if (q && q.o && q.pc) {
+      const g = (q.o - q.pc) / q.pc;
+      if (g >= 0.01) {
+        const open = q.l > q.pc;
+        add({key:"gap-up", name: open ? "Gap nach oben (offen)" : "Gap nach oben geschlossen", dir: open ? "up" : "down", rel: open ? "mittel" : "niedrig",
+          status: open ? "confirmed" : "forming", level:q.pc, target:null, inval:q.pc, text: open ? "Lücke ab " + f(q.pc) + " hält" : "Lücke wieder gefüllt, Schwäche", lines:[]});
+      } else if (g <= -0.01) {
+        const open = q.h < q.pc;
+        add({key:"gap-down", name: open ? "Gap nach unten (offen)" : "Gap nach unten geschlossen", dir: open ? "down" : "up", rel: open ? "mittel" : "niedrig",
+          status: open ? "confirmed" : "forming", level:q.pc, target:null, inval:q.pc, text: open ? "Lücke unter " + f(q.pc) + " offen" : "Lücke wieder gefüllt, Stärke", lines:[]});
+      }
+    }
+    return {bars:B, list:out, atr};
+  }
+  return {detect, detectBars, toBars, BAR, REL_W};
+})();
+
+</script>
+<script>
+// Tageskerzen: Kennzahlen, Tagesmuster und Backtest der Regeln über ein Jahr.
+window.Daily = (() => {
+  const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+  const sma = (c, n, i) => i + 1 >= n ? mean(c.slice(i + 1 - n, i + 1)) : null;
+  function emaArr(c, n) { const k = 2 / (n + 1), o = [c[0]]; for (let i = 1; i < c.length; i++) o.push(c[i] * k + o[i - 1] * (1 - k)); return o; }
+  function rsiAt(c, i) {
+    if (i < 14) return 50; let g = 0, l = 0;
+    for (let j = i - 13; j <= i; j++) { const d = c[j] - c[j - 1]; d > 0 ? g += d : l -= d; }
+    return l === 0 ? (g === 0 ? 50 : 100) : 100 - 100 / (1 + g / l);
+  }
+  function atrAt(B, i, n = 14) {
+    const tr = []; for (let j = Math.max(1, i - n + 1); j <= i; j++) tr.push(Math.max(B[j].h - B[j].l, Math.abs(B[j].h - B[j - 1].c), Math.abs(B[j].l - B[j - 1].c)));
+    return tr.length ? mean(tr) : B[i].h - B[i].l;
+  }
+
+  // Aus der API-Antwort (neueste zuerst oder zuerst älteste) Kerzen machen
+  function fromTwelve(values) {
+    return values.map((v) => ({d:v.datetime.slice(0, 10), o:+v.open, h:+v.high, l:+v.low, c:+v.close, v:+(v.volume || 0)}))
+      .filter((b) => isFinite(b.c) && b.c > 0).sort((a, b) => a.d < b.d ? -1 : 1)
+      .map((b, i) => Object.assign(b, {id:i, first:i, n:1}));
+  }
+  // Demo: ein Jahr simulierte Tageskerzen mit Trendphasen, endet beim Vortagesschluss
+  function demo(endPrice) {
+    const out = []; let p = 100, drift = 0, vol = 0.012 + Math.random() * 0.015;
+    const day = new Date(); day.setDate(day.getDate() - 380);
+    for (let k = 0; out.length < 260; k++) {
+      day.setDate(day.getDate() + 1); if (day.getDay() === 0 || day.getDay() === 6) continue;
+      if (Math.random() < 0.05) drift = (Math.random() - 0.45) * vol * 0.5;
+      const o = p * (1 + (Math.random() - 0.5) * vol * 0.4), c = o * (1 + drift + (Math.random() - 0.5) * vol * 1.6);
+      const h = Math.max(o, c) * (1 + Math.random() * vol * 0.6), l = Math.min(o, c) * (1 - Math.random() * vol * 0.6);
+      out.push({d:day.toISOString().slice(0, 10), o, h, l, c, v: Math.round(1e6 * (0.5 + Math.random()))}); p = c;
+    }
+    // Datum rückwärts ab gestern über Werktage setzen
+    const dd = new Date(); dd.setDate(dd.getDate() - 1);
+    for (let i = out.length - 1; i >= 0; i--) { while (dd.getDay() === 0 || dd.getDay() === 6) dd.setDate(dd.getDate() - 1); out[i].d = dd.toISOString().slice(0, 10); dd.setDate(dd.getDate() - 1); }
+    const f = endPrice / out[out.length - 1].c;
+    return out.map((b, i) => ({d:b.d, o:b.o * f, h:b.h * f, l:b.l * f, c:b.c * f, v:b.v, id:i, first:i, n:1}));
+  }
+
+  function stats(B) {
+    const c = B.map((b) => b.c), i = c.length - 1, last = c[i];
+    const s50 = sma(c, 50, i), s200 = sma(c, 200, i);
+    const look = (n) => i - n >= 0 ? (last / c[i - n] - 1) * 100 : null;
+    const yr = B.slice(-252), hi = Math.max(...yr.map((b) => b.h)), lo = Math.min(...yr.map((b) => b.l));
+    const v20 = B.slice(-21, -1).map((b) => b.v).filter((x) => x > 0);
+    let trend = "seitwärts", tcls = "";
+    if (s50 && s200) {
+      if (last > s50 && s50 > s200) { trend = "Aufwärtstrend"; tcls = "up"; }
+      else if (last < s50 && s50 < s200) { trend = "Abwärtstrend"; tcls = "down"; }
+      else if (last > s200) trend = "über 200-Tage-Linie"; else { trend = "unter 200-Tage-Linie"; tcls = "down"; }
+    } else if (s50) { trend = last > s50 ? "über 50-Tage-Linie" : "unter 50-Tage-Linie"; tcls = last > s50 ? "up" : "down"; }
+    return {last, s50, s200, rsi: rsiAt(c, i), atrPct: atrAt(B, i) / last * 100, m1: look(21), m3: look(63), m6: look(126), y1: look(Math.min(251, i)),
+      hi, lo, fromHi: (last / hi - 1) * 100, volAvg: v20.length ? mean(v20) : null, trend, tcls,
+      trendUp: !!(s50 && s200 && last > s50 && s50 > s200), belowS200: !!(s200 && last < s200)};
+  }
+
+  // Ergebnis einer Trade-Liste (Prozent je Trade, nacheinander)
+  function summarize(trades, bh) {
+    const w = trades.filter((t) => t.r > 0), l = trades.filter((t) => t.r <= 0);
+    const sw = w.reduce((s, t) => s + t.r, 0), sl = -l.reduce((s, t) => s + t.r, 0);
+    let eq = 1, peak = 1, dd = 0;
+    for (const t of trades) { eq *= 1 + t.r / 100; peak = Math.max(peak, eq); dd = Math.min(dd, eq / peak - 1); }
+    return {n: trades.length, hit: trades.length ? w.length / trades.length * 100 : null, avgW: w.length ? sw / w.length : null, avgL: l.length ? -sl / l.length : null,
+      pf: sl > 0 ? sw / sl : (w.length ? Infinity : null), total: (eq - 1) * 100, maxDD: dd * 100, bh, trades};
+  }
+  // Gleiche Regeln wie live: Einstieg ab Score 75, Stop 1,5×ATR, nachgezogen 2,5×ATR, Einstand ab +1R, Ziel 3R, Ausstieg bei Trendbruch
+  function backtestSignals(B, start = 30) {
+    const c = B.map((b) => b.c), e9 = emaArr(c, 9), e21 = emaArr(c, 21), trades = [];
+    let pos = null;
+    for (let i = start; i < B.length; i++) {
+      const b = B[i], atr = atrAt(B, i);
+      if (pos) {
+        let exit = null, px = null;
+        if (b.l <= pos.stop) { exit = "Stop"; px = Math.min(b.o, pos.stop); }       // Stop zuerst (vorsichtig)
+        else if (b.h >= pos.target) { exit = "Ziel"; px = Math.max(b.o, pos.target); }
+        else if (e9[i] < e21[i] && e9[i - 1] >= e21[i - 1]) { exit = "Trendbruch"; px = b.c; }
+        if (exit) { trades.push({in:pos.d, out:b.d, r:(px / pos.entry - 1) * 100, why:exit}); pos = null; continue; }
+        pos.high = Math.max(pos.high, b.h);
+        pos.stop = Math.max(pos.stop, pos.high - 2.5 * atr);
+        if (b.c >= pos.entry + pos.risk) pos.stop = Math.max(pos.stop, pos.entry);
+        continue;
+      }
+      const up = e9[i] > e21[i], slope = e21[i] > e21[i - 5], rsi = rsiAt(c, i);
+      let cross = false; for (let j = i; j > i - 6; j--) if (e9[j] > e21[j] && e9[j - 1] <= e21[j - 1]) cross = true;
+      let s = 0;
+      if (up) s += 25; if (slope) s += 15; if (b.c > e21[i]) s += 10; if (b.c > b.o) s += 10; if (b.c > B[i - 1].c) s += 5;
+      if (rsi >= 50 && rsi <= 68) s += 20; else if (rsi > 68 && rsi <= 75) s += 5; else if (rsi > 75) s -= 15; else if (rsi < 45) s -= 10;
+      if (cross) s += 15;
+      if (s >= 75 && up && rsi < 72) { const risk = 1.5 * atr; pos = {d:b.d, entry:b.c, stop:b.c - risk, risk, target:b.c + 3 * risk, high:b.c}; }
+    }
+    if (pos) trades.push({in:pos.d, out:"offen", r:(B[B.length - 1].c / pos.entry - 1) * 100, why:"offen"});
+    return summarize(trades, (B[B.length - 1].c / B[start].c - 1) * 100);
+  }
+  // Muster Tag für Tag durchgehen, als hätte man nur die Vergangenheit gekannt
+  function backtestPatterns(B, start = 40) {
+    const seen = {}, events = [], trades = [];
+    let pos = null;
+    for (let i = start; i < B.length; i++) {
+      const b = B[i];
+      if (pos) {
+        let px = null, why = null;
+        if (b.l <= pos.stop) { px = Math.min(b.o, pos.stop); why = "Stop"; }
+        else if (b.h >= pos.target) { px = Math.max(b.o, pos.target); why = "Ziel"; }
+        else if (i - pos.i >= 30) { px = b.c; why = "Zeit"; }
+        if (why) { trades.push({in:pos.d, out:b.d, r:(px / pos.entry - 1) * 100, why, name:pos.name}); pos = null; }
+      }
+      const det = Patterns.detectBars(B.slice(0, i + 1), null);
+      for (const p of det.list) {
+        if (p.status !== "confirmed" || seen[p.key] || !p.target || p.rel === "niedrig") continue;
+        seen[p.key] = true;
+        let res = "abgelaufen";
+        for (let j = i + 1; j < Math.min(B.length, i + 31); j++) {
+          if (p.dir === "up" ? B[j].h >= p.target : B[j].l <= p.target) { res = "ok"; break; }
+          if (p.dir === "up" ? B[j].c < p.level - p.atr : B[j].c > p.level + p.atr) { res = "fail"; break; }
+          if (j === B.length - 1) res = "offen";
+        }
+        if (i === B.length - 1) res = "offen";
+        events.push({name:p.name, dir:p.dir, d:b.d, res});
+        if (!pos && p.dir === "up") {
+          const stop = Math.min(p.level - p.tol, b.c - p.atr), risk = b.c - stop, reward = p.target - b.c;
+          if (risk > 0 && reward >= 1.5 * risk) pos = {i, d:b.d, entry:b.c, stop, target:p.target, name:p.name};
+        }
+      }
+    }
+    if (pos) trades.push({in:pos.d, out:"offen", r:(B[B.length - 1].c / pos.entry - 1) * 100, why:"offen", name:pos.name});
+    return {sum: summarize(trades, (B[B.length - 1].c / B[start].c - 1) * 100), events};
+  }
+  return {fromTwelve, demo, stats, backtestSignals, backtestPatterns, sma, emaArr};
+})();
+
+</script>
+<script>
+const SP500_RAW = `MMM|3M|IND
+AOS|A. O. Smith|IND
+ABT|Abbott Laboratories|HC
+ABBV|AbbVie|HC
+ACN|Accenture|IT
+ADBE|Adobe|IT
+AMD|Advanced Micro Devices|IT
+AES|AES Corporation|UT
+AFL|Aflac|FIN
+A|Agilent Technologies|HC
+APD|Air Products|MAT
+ABNB|Airbnb|CD
+AKAM|Akamai Technologies|IT
+ALB|Albemarle|MAT
+ARE|Alexandria Real Estate Equities|RE
+ALGN|Align Technology|HC
+ALLE|Allegion|IND
+LNT|Alliant Energy|UT
+ALL|Allstate|FIN
+GOOGL|Alphabet (Klasse A)|COM
+GOOG|Alphabet (Klasse C)|COM
+MO|Altria|CS
+AMZN|Amazon|CD
+AMCR|Amcor|MAT
+AEE|Ameren|UT
+AEP|American Electric Power|UT
+AXP|American Express|FIN
+AIG|American International Group|FIN
+AMT|American Tower|RE
+AWK|American Water Works|UT
+AMP|Ameriprise Financial|FIN
+AME|Ametek|IND
+AMGN|Amgen|HC
+APH|Amphenol|IT
+ADI|Analog Devices|IT
+AON|Aon|FIN
+APA|APA Corporation|EN
+APO|Apollo Global Management|FIN
+AAPL|Apple|IT
+AMAT|Applied Materials|IT
+APP|AppLovin|COM
+APTV|Aptiv|CD
+ACGL|Arch Capital Group|FIN
+ADM|Archer Daniels Midland|CS
+ARES|Ares Management|FIN
+ANET|Arista Networks|IT
+AJG|Arthur J. Gallagher & Co.|FIN
+AIZ|Assurant|FIN
+T|AT&T|COM
+ATO|Atmos Energy|UT
+ADSK|Autodesk|IT
+ADP|Automatic Data Processing|IND
+AZO|AutoZone|CD
+AVY|Avery Dennison|MAT
+AXON|Axon Enterprise|IND
+BKR|Baker Hughes|EN
+BALL|Ball Corporation|MAT
+BAC|Bank of America|FIN
+BAX|Baxter International|HC
+BDX|Becton Dickinson|HC
+BRK.B|Berkshire Hathaway|FIN
+BBY|Best Buy|CD
+TECH|Bio-Techne|HC
+BIIB|Biogen|HC
+BLK|BlackRock|FIN
+BX|Blackstone|FIN
+XYZ|Block|FIN
+BE|Bloom Energy|IND
+BNY|BNY Mellon|FIN
+BA|Boeing|IND
+BKNG|Booking Holdings|CD
+BSX|Boston Scientific|HC
+BMY|Bristol Myers Squibb|HC
+AVGO|Broadcom|IT
+BR|Broadridge Financial Solutions|IND
+BRO|Brown & Brown|FIN
+BF.B|Brown-Forman|CS
+BG|Bunge Global|CS
+BXP|BXP|RE
+CHRW|C.H. Robinson|IND
+CDNS|Cadence Design Systems|IT
+CPT|Camden Property Trust|RE
+COF|Capital One|FIN
+CAH|Cardinal Health|HC
+CCL|Carnival Corporation|CD
+CARR|Carrier Global|IND
+CVNA|Carvana|CD
+CASY|Casey's|CS
+CAT|Caterpillar|IND
+CBOE|Cboe Global Markets|FIN
+CBRE|CBRE Group|RE
+CDW|CDW Corporation|IT
+COR|Cencora|HC
+CNC|Centene|HC
+CNP|CenterPoint Energy|UT
+CF|CF Industries|MAT
+CRL|Charles River Laboratories|HC
+SCHW|Charles Schwab|FIN
+CHTR|Charter Communications|COM
+CVX|Chevron|EN
+CMG|Chipotle Mexican Grill|CD
+CB|Chubb|FIN
+CHD|Church & Dwight|CS
+CIEN|Ciena|IT
+CI|Cigna|HC
+CINF|Cincinnati Financial|FIN
+CTAS|Cintas|IND
+CSCO|Cisco|IT
+C|Citigroup|FIN
+CFG|Citizens Financial Group|FIN
+CLX|Clorox|CS
+CME|CME Group|FIN
+CMS|CMS Energy|UT
+KO|Coca-Cola|CS
+CTSH|Cognizant|IT
+COHR|Coherent|IT
+COIN|Coinbase|FIN
+CL|Colgate-Palmolive|CS
+CMCSA|Comcast|COM
+FIX|Comfort Systems USA|IND
+COP|ConocoPhillips|EN
+ED|Consolidated Edison|UT
+STZ|Constellation Brands|CS
+CEG|Constellation Energy|UT
+COO|Cooper Companies|HC
+CPRT|Copart|IND
+GLW|Corning|IT
+CPAY|Corpay|FIN
+CSGP|CoStar Group|RE
+COST|Costco|CS
+CRH|CRH|MAT
+CRWD|CrowdStrike|IT
+CCI|Crown Castle|RE
+CSX|CSX Corporation|IND
+CMI|Cummins|IND
+CVS|CVS Health|HC
+DHR|Danaher|HC
+DRI|Darden Restaurants|CD
+DDOG|Datadog|IT
+DVA|DaVita|HC
+DECK|Deckers Brands|CD
+DE|Deere & Company|IND
+DELL|Dell Technologies|IT
+DAL|Delta Air Lines|IND
+DVN|Devon Energy|EN
+DXCM|Dexcom|HC
+FANG|Diamondback Energy|EN
+DLR|Digital Realty|RE
+DG|Dollar General|CS
+DLTR|Dollar Tree|CS
+D|Dominion Energy|UT
+DPZ|Domino's|CD
+DASH|DoorDash|CD
+DOV|Dover Corporation|IND
+DOW|Dow|MAT
+DHI|D. R. Horton|CD
+DTE|DTE Energy|UT
+DUK|Duke Energy|UT
+DD|DuPont|IND
+ETN|Eaton|IND
+EBAY|eBay|CD
+ECHO|EchoStar|COM
+ECL|Ecolab|MAT
+EIX|Edison International|UT
+EW|Edwards Lifesciences|HC
+ELV|Elevance Health|HC
+EME|Emcor|IND
+EMR|Emerson Electric|IND
+ETR|Entergy|UT
+EOG|EOG Resources|EN
+EQT|EQT Corporation|EN
+EFX|Equifax|IND
+EQIX|Equinix|RE
+ERIE|Erie Indemnity|FIN
+ESS|Essex Property Trust|RE
+EL|Estée Lauder|CS
+EG|Everest Group|FIN
+EVRG|Evergy|UT
+P|Everpure|IT
+ES|Eversource Energy|UT
+EXC|Exelon|UT
+EXE|Expand Energy|EN
+EXPE|Expedia Group|CD
+EXPD|Expeditors International|IND
+EXR|Extra Space Storage|RE
+XOM|ExxonMobil|EN
+FFIV|F5|IT
+FDS|FactSet|FIN
+FICO|Fair Isaac|IT
+FAST|Fastenal|IND
+FRT|Federal Realty Investment Trust|RE
+FDX|FedEx|IND
+FDXF|FedEx Freight|IND
+FERG|Ferguson Enterprises|IND
+FIS|Fidelity National Information Services|FIN
+FITB|Fifth Third Bancorp|FIN
+FSLR|First Solar|IT
+FE|FirstEnergy|UT
+FISV|Fiserv|FIN
+FLEX|Flex|IT
+F|Ford Motor|CD
+FTNT|Fortinet|IT
+FTV|Fortive|IND
+FOXA|Fox Corporation (Klasse A)|COM
+FOX|Fox Corporation (Klasse B)|COM
+BEN|Franklin Resources|FIN
+FCX|Freeport-McMoRan|MAT
+GRMN|Garmin|CD
+IT|Gartner|IT
+GE|GE Aerospace|IND
+GEHC|GE HealthCare|HC
+GEV|GE Vernova|IND
+GEN|Gen Digital|IT
+GNRC|Generac|IND
+GD|General Dynamics|IND
+GIS|General Mills|CS
+GM|General Motors|CD
+GPC|Genuine Parts|CD
+GILD|Gilead Sciences|HC
+GPN|Global Payments|FIN
+GL|Globe Life|FIN
+GDDY|GoDaddy|IT
+GS|Goldman Sachs|FIN
+HAL|Halliburton|EN
+HIG|Hartford|FIN
+HAS|Hasbro|CD
+HCA|HCA Healthcare|HC
+DOC|Healthpeak Properties|RE
+HSIC|Henry Schein|HC
+HSY|Hershey|CS
+HPE|Hewlett Packard Enterprise|IT
+HLT|Hilton Worldwide|CD
+HD|Home Depot|CD
+HONA|Honeywell Aerospace|IND
+HON|Honeywell Technologies|IND
+HRL|Hormel Foods|CS
+HST|Host Hotels & Resorts|RE
+HWM|Howmet Aerospace|IND
+HPQ|HP Inc.|IT
+HUBB|Hubbell|IND
+HUM|Humana|HC
+HBAN|Huntington Bancshares|FIN
+HII|Huntington Ingalls Industries|IND
+IBM|IBM|IT
+IEX|IDEX Corporation|IND
+IDXX|Idexx Laboratories|HC
+ITW|Illinois Tool Works|IND
+ILMN|Illumina|HC
+INCY|Incyte|HC
+IR|Ingersoll Rand|IND
+PODD|Insulet|HC
+INTC|Intel|IT
+IBKR|Interactive Brokers|FIN
+ICE|Intercontinental Exchange|FIN
+IFF|International Flavors & Fragrances|MAT
+IP|International Paper|MAT
+INTU|Intuit|IT
+ISRG|Intuitive Surgical|HC
+IVZ|Invesco|FIN
+INVH|Invitation Homes|RE
+IQV|IQVIA|HC
+IRM|Iron Mountain|RE
+JBHT|J.B. Hunt|IND
+JBL|Jabil|IT
+JKHY|Jack Henry & Associates|FIN
+J|Jacobs Solutions|IND
+JNJ|Johnson & Johnson|HC
+JCI|Johnson Controls|IND
+JPM|JPMorgan Chase|FIN
+KVUE|Kenvue|CS
+KDP|Keurig Dr Pepper|CS
+KEY|KeyCorp|FIN
+KEYS|Keysight Technologies|IT
+KMB|Kimberly-Clark|CS
+KIM|Kimco Realty|RE
+KMI|Kinder Morgan|EN
+KKR|KKR & Co.|FIN
+KLAC|KLA Corporation|IT
+KHC|Kraft Heinz|CS
+KR|Kroger|CS
+LHX|L3Harris|IND
+LH|Labcorp|HC
+LRCX|Lam Research|IT
+LVS|Las Vegas Sands|CD
+LDOS|Leidos|IND
+LEN|Lennar|CD
+LII|Lennox International|IND
+LLY|Eli Lilly|HC
+LIN|Linde|MAT
+LYV|Live Nation Entertainment|COM
+LMT|Lockheed Martin|IND
+L|Loews Corporation|FIN
+LOW|Lowe's|CD
+LULU|Lululemon Athletica|CD
+LITE|Lumentum|IT
+LYB|LyondellBasell|MAT
+MTB|M&T Bank|FIN
+MPC|Marathon Petroleum|EN
+MAR|Marriott International|CD
+MRSH|Marsh McLennan|FIN
+MLM|Martin Marietta Materials|MAT
+MRVL|Marvell Technology|IT
+MAS|Masco|IND
+MA|Mastercard|FIN
+MKC|McCormick & Company|CS
+MCD|McDonald's|CD
+MCK|McKesson|HC
+MDT|Medtronic|HC
+MRK|Merck & Co.|HC
+META|Meta Platforms|COM
+MET|MetLife|FIN
+MTD|Mettler Toledo|HC
+MGM|MGM Resorts|CD
+MCHP|Microchip Technology|IT
+MU|Micron Technology|IT
+MSFT|Microsoft|IT
+MAA|Mid-America Apartment Communities|RE
+MRNA|Moderna|HC
+MDLZ|Mondelez International|CS
+MPWR|Monolithic Power Systems|IT
+MNST|Monster Beverage|CS
+MCO|Moody's|FIN
+MS|Morgan Stanley|FIN
+MOS|Mosaic Company|MAT
+MSI|Motorola Solutions|IT
+MSCI|MSCI|FIN
+NDAQ|Nasdaq|FIN
+NTAP|NetApp|IT
+NFLX|Netflix|COM
+NEM|Newmont|MAT
+NWSA|News Corp (Klasse A)|COM
+NWS|News Corp (Klasse B)|COM
+NEE|NextEra Energy|UT
+NKE|Nike|CD
+NI|NiSource|UT
+NDSN|Nordson|IND
+NSC|Norfolk Southern|IND
+NTRS|Northern Trust|FIN
+NOC|Northrop Grumman|IND
+NCLH|Norwegian Cruise Line Holdings|CD
+NRG|NRG Energy|UT
+NUE|Nucor|MAT
+NVDA|Nvidia|IT
+NVR|NVR|CD
+NXPI|NXP Semiconductors|IT
+ORLY|O'Reilly Automotive|CD
+OXY|Occidental Petroleum|EN
+ODFL|Old Dominion|IND
+OMC|Omnicom Group|COM
+ON|ON Semiconductor|IT
+OKE|Oneok|EN
+ORCL|Oracle|IT
+OTIS|Otis Worldwide|IND
+PCAR|Paccar|IND
+PKG|Packaging Corporation of America|MAT
+PLTR|Palantir Technologies|IT
+PANW|Palo Alto Networks|IT
+PH|Parker Hannifin|IND
+PAYX|Paychex|IND
+PYPL|PayPal|FIN
+PNR|Pentair|IND
+PEP|PepsiCo|CS
+PFE|Pfizer|HC
+PCG|PG&E|UT
+PM|Philip Morris International|CS
+PSX|Phillips 66|EN
+PNW|Pinnacle West Capital|UT
+PNC|PNC Financial Services|FIN
+PPG|PPG Industries|MAT
+PPL|PPL Corporation|UT
+PFG|Principal Financial Group|FIN
+PG|Procter & Gamble|CS
+PGR|Progressive|FIN
+PLD|Prologis|RE
+PRU|Prudential Financial|FIN
+PTC|PTC|IT
+PEG|Public Service Enterprise Group|UT
+PSA|Public Storage|RE
+PHM|PulteGroup|CD
+Q|Qnity Electronics|IT
+QCOM|Qualcomm|IT
+PWR|Quanta Services|IND
+DGX|Quest Diagnostics|HC
+RL|Ralph Lauren|CD
+RJF|Raymond James Financial|FIN
+RDDT|Reddit|COM
+O|Realty Income|RE
+REG|Regency Centers|RE
+REGN|Regeneron Pharmaceuticals|HC
+RF|Regions Financial|FIN
+RSG|Republic Services|IND
+RMD|ResMed|HC
+RVTY|Revvity|HC
+HOOD|Robinhood Markets|FIN
+ROK|Rockwell Automation|IND
+ROL|Rollins|IND
+ROP|Roper Technologies|IT
+ROST|Ross Stores|CD
+RCL|Royal Caribbean Group|CD
+RTX|RTX Corporation|IND
+SPGI|S&P Global|FIN
+CRM|Salesforce|IT
+SNDK|Sandisk|IT
+SBAC|SBA Communications|RE
+SLB|Schlumberger|EN
+STX|Seagate Technology|IT
+SRE|Sempra|UT
+NOW|ServiceNow|IT
+SHW|Sherwin-Williams|MAT
+SPG|Simon Property Group|RE
+SKYD|Skydance|COM
+SWKS|Skyworks Solutions|IT
+SJM|J.M. Smucker|CS
+SW|Smurfit Westrock|MAT
+SNA|Snap-on|IND
+SOLV|Solventum|HC
+SO|Southern Company|UT
+LUV|Southwest Airlines|IND
+SWK|Stanley Black & Decker|IND
+SBUX|Starbucks|CD
+STT|State Street|FIN
+STLD|Steel Dynamics|MAT
+STE|Steris|HC
+SYK|Stryker|HC
+SMCI|Supermicro|IT
+SYF|Synchrony Financial|FIN
+SNPS|Synopsys|IT
+SYY|Sysco|CS
+TMUS|T-Mobile US|COM
+TROW|T. Rowe Price|FIN
+TTWO|Take-Two Interactive|COM
+TPR|Tapestry|CD
+TRGP|Targa Resources|EN
+TGT|Target|CS
+TEL|TE Connectivity|IT
+TDY|Teledyne Technologies|IT
+TER|Teradyne|IT
+TSLA|Tesla|CD
+TXN|Texas Instruments|IT
+TPL|Texas Pacific Land|EN
+TXT|Textron|IND
+TMO|Thermo Fisher Scientific|HC
+TJX|TJX Companies|CD
+TKO|TKO Group Holdings|COM
+TSCO|Tractor Supply|CD
+TT|Trane Technologies|IND
+TDG|TransDigm Group|IND
+TRV|Travelers Companies|FIN
+TRMB|Trimble|IT
+TFC|Truist Financial|FIN
+TWLO|Twilio|IT
+TYL|Tyler Technologies|IT
+TSN|Tyson Foods|CS
+USB|U.S. Bancorp|FIN
+UBER|Uber|IND
+UDR|UDR|RE
+ULTA|Ulta Beauty|CD
+UNP|Union Pacific|IND
+UAL|United Airlines Holdings|IND
+UPS|United Parcel Service|IND
+URI|United Rentals|IND
+UNH|UnitedHealth Group|HC
+UHS|Universal Health Services|HC
+VLO|Valero Energy|EN
+VEEV|Veeva Systems|HC
+VTR|Ventas|RE
+VLTO|Veralto|IND
+VRSN|Verisign|IT
+VRSK|Verisk Analytics|IND
+VZ|Verizon|COM
+VRTX|Vertex Pharmaceuticals|HC
+VRT|Vertiv|IND
+VTRS|Viatris|HC
+VICI|Vici Properties|RE
+V|Visa|FIN
+VST|Vistra|UT
+VMRK|Vivmark Residential|RE
+VMC|Vulcan Materials|MAT
+VYLR|Vylor|CS
+WRB|W. R. Berkley|FIN
+GWW|W. W. Grainger|IND
+WAB|Wabtec|IND
+WMT|Walmart|CS
+DIS|Walt Disney|COM
+WM|Waste Management|IND
+WAT|Waters Corporation|HC
+WEC|WEC Energy Group|UT
+WFC|Wells Fargo|FIN
+WELL|Welltower|RE
+WST|West Pharmaceutical Services|HC
+WDC|Western Digital|IT
+WY|Weyerhaeuser|RE
+WSM|Williams-Sonoma|CD
+WMB|Williams Companies|EN
+WTW|Willis Towers Watson|FIN
+WDAY|Workday|IT
+WYNN|Wynn Resorts|CD
+XEL|Xcel Energy|UT
+XYL|Xylem|IND
+YUM|Yum! Brands|CD
+ZBRA|Zebra Technologies|IT
+ZBH|Zimmer Biomet|HC
+ZTS|Zoetis|HC`;
+</script>
+<script>
+(() => {
+  const INTERVAL = 30;        // Sekunden für die Watchlist
+  const RATE_MS = 1150;       // ~52 Abrufe pro Minute, unter dem Gratis-Limit von 60
+  const START_CASH = 10000;
+  const DEFAULT = ["AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","AMD"];
+  const SECTORS = {IT:"IT",HC:"Gesundheit",FIN:"Finanzen",IND:"Industrie",CD:"Zykl. Konsum",CS:"Basiskonsum",COM:"Kommunikation",EN:"Energie",UT:"Versorger",RE:"Immobilien",MAT:"Rohstoffe"};
+  const SP = SP500_RAW.trim().split("\n").map((l) => { const [s, n, sec] = l.split("|"); return {s, n, sec}; });
+  const INFO = Object.fromEntries(SP.map((x) => [x.s, x]));
+
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n, d = 2) => n == null || !isFinite(n) ? "—" : n.toLocaleString("de-AT", {minimumFractionDigits:d, maximumFractionDigits:d});
+  const usd = (n) => n == null || !isFinite(n) ? "—" : fmt(n) + " $";
+  const signed = (n, suf = "") => n == null || !isFinite(n) ? "—" : (n > 0 ? "+" : n < 0 ? "−" : "±") + fmt(Math.abs(n)) + suf;
+  const clock = (ms) => ms ? new Date(ms).toLocaleTimeString("de-AT", {hour:"2-digit", minute:"2-digit", second:"2-digit"}) : "—";
+
+  const S = { mode:"stopped", key:"", fav:[...DEFAULT], d:{}, cash:START_CASH, positions:[], closed:[], alerts:{},
+              sort:{k:"dp", dir:-1}, dirty:true, tableDirty:true, pending:new Set(), inflight:0, pausedUntil:0, rot:0,
+              pump:null, ui:null, demoNext:0, liveSince:0, tdKey:"", dq:[], dfail:{}, dpause:0,
+              alp:{key:"", sec:"", on:false, busy:false, pause:0, last:0, every:15000, rounds:0, lastOk:0} };
+  const D = (sym) => S.d[sym] || (S.d[sym] = {hist:[], at:0});
+
+  // ---------- Daten ----------
+  function demoQuote(sym) {
+    const d = D(sym);
+    const base = d.q ? d.q.c : 20 + Math.random() * 480;
+    if (!d.vol0) d.vol0 = 0.0008 + Math.random() * 0.003;
+    if (d.drift == null || Math.random() < 0.04) d.drift = (Math.random() - 0.5) * 1.2 * d.vol0; // Trendphasen simulieren
+    const c = +(base * (1 + d.drift + (Math.random() - 0.5) * 3.4 * d.vol0)).toFixed(2);
+    const q = d.q ? {...d.q} : {o:base, pc:base * (1 + (Math.random() - .5) * .05), h:base, l:base};
+    q.c = c; q.h = Math.max(q.h, c); q.l = Math.min(q.l, c);
+    q.d = c - q.pc; q.dp = q.d / q.pc * 100; q.t = Math.floor(Date.now() / 1000);
+    return q;
+  }
+  async function liveQuote(sym) {
+    const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${encodeURIComponent(S.key)}`);
+    if (r.status === 401 || r.status === 403) { const e = new Error("Der API-Schlüssel wurde abgelehnt. Prüfe, ob er vollständig kopiert ist."); e.auth = true; throw e; }
+    if (r.status === 429) { const e = new Error("Abruflimit erreicht, kurze Pause."); e.rate = true; throw e; }
+    if (!r.ok) throw new Error("Finnhub antwortet nicht (Status " + r.status + ").");
+    const q = await r.json();
+    if (!q || !q.c) throw new Error("kein Kurs");
+    return q;
+  }
+  function store(sym, q, at = Date.now()) {
+    const d = D(sym);
+    const lastT = d.hist.length ? d.hist[d.hist.length - 1].t : 0;
+    if (S.fav.includes(sym) && !S.seeding && at - lastT < INTERVAL * 800) { d.q = q; d.at = at; d.err = null; S.tableDirty = true; return; } // Kurs aktualisieren, aber Takt der Signale halten
+    d.q = q; d.at = at; d.err = null;
+    d.cnt = (d.cnt || 0) + 1;
+    d.hist.push({t:at, p:q.c, i:d.cnt});
+    const keep = S.fav.includes(sym) ? 600 : 60;
+    while (d.hist.length > keep) d.hist.shift();
+    S.dirty = true; S.tableDirty = true;
+    if (S.fav.includes(sym)) evaluate(sym, S.seeding);
+  }
+
+  // ---------- Signal-Engine ----------
+  // Einstieg: EMA9 über EMA21, steigende EMA21, Kurs über Tageseröffnung, RSI 50–70.
+  // Ausstieg: Stop 1,5×ATR unter Einstieg, nachgezogen auf Hoch − 2,5×ATR,
+  // Kursziel = Einstieg + 3× Anfangsrisiko, oder EMA9 kreuzt unter EMA21.
+  const WARMUP = 30, BUY_SCORE = 75;
+  const SG = { seenDay:{}, an:{}, open:{}, log:[], done:[], flash:{}, pat:{}, seen:{}, track:[], plog:[], alarms:[], used:{} };
+  const PAT_MIN = 64; // Abrufe, bevor Muster erkannt werden (16 Kerzen à 2 Minuten)
+  function ema(p, n) { const k = 2 / (n + 1), out = [p[0]]; for (let i = 1; i < p.length; i++) out.push(p[i] * k + out[i-1] * (1 - k)); return out; }
+  function rsiAt(p, end) {
+    let g = 0, l = 0;
+    for (let i = end - 13; i <= end; i++) { const ch = p[i] - p[i-1]; ch > 0 ? g += ch : l -= ch; }
+    return l === 0 ? (g === 0 ? 50 : 100) : 100 - 100 / (1 + g / l);
+  }
+  function analyze(sym) {
+    const d = S.d[sym], p = d ? d.hist.map((h) => h.p) : [], n = p.length, q = d && d.q;
+    if (!q || n < WARMUP) return {state:"warm", n};
+    const e9 = ema(p, 9), e21 = ema(p, 21), last = p[n-1];
+    const moves = []; for (let i = Math.max(1, n - 20); i < n; i++) moves.push(Math.abs(p[i] - p[i-1]));
+    const atr = Math.max(mean(moves), last * 0.0004);
+    const rsi = rsiAt(p, n - 1), rsiPrev = rsiAt(p, n - 3);
+    const slope = (e21[n-1] - e21[n-6]) / e21[n-6] * 100;
+    let crossAgo = null; for (let i = n - 1; i >= Math.max(1, n - 8); i--) if (e9[i] > e21[i] && e9[i-1] <= e21[i-1]) { crossAgo = n - 1 - i; break; }
+    const up = e9[n-1] > e21[n-1], crossDown = !up && e9[n-2] > e21[n-2];
+    let score = 0; const why = [];
+    if (up) { score += 25; why.push("EMA9 über EMA21"); } else why.push("EMA9 unter EMA21");
+    if (slope > 0) { score += 15; why.push("Trend steigt"); }
+    if (last > e21[n-1]) score += 10;
+    if (q.c > q.o) { score += 10; why.push("über Tageseröffnung"); }
+    if (q.dp > 0) score += 5;
+    if (rsi >= 50 && rsi <= 68) { score += 20; why.push("RSI " + fmt(rsi, 0) + " (Momentum)"); }
+    else if (rsi > 68 && rsi <= 75) { score += 5; why.push("RSI " + fmt(rsi, 0) + " (hoch)"); }
+    else if (rsi > 75) { score -= 15; why.push("RSI " + fmt(rsi, 0) + " (überhitzt)"); }
+    else if (rsi < 45) { score -= 10; why.push("RSI " + fmt(rsi, 0) + " (schwach)"); }
+    if (crossAgo != null && crossAgo <= 5) { score += 15; why.push("frisches Kreuzungssignal"); }
+    score = Math.max(0, Math.min(100, score));
+    return {state:"ready", n, last, e9:e9[n-1], e21:e21[n-1], atr, rsi, rsiPrev, up, crossDown, score, why,
+            buy: score >= BUY_SCORE && up && rsi < 72};
+  }
+  function evaluate(sym, quiet) {
+    const a = analyze(sym); SG.an[sym] = a;
+    const d = S.d[sym];
+    const det = d && d.q && d.hist.length >= PAT_MIN ? Patterns.detect(d.hist, d.q) : {list:[], bars:[]};
+    SG.pat[sym] = det;
+    if (d && d.q) handlePatterns(sym, det, quiet);
+    if (a.state !== "ready") return;
+    let bearC = null, bearF = null, bullC = null;
+    for (const p of det.list) {
+      const w = Patterns.REL_W[p.rel];
+      if (p.dir === "up") a.score += p.status === "confirmed" ? w : Math.round(w / 3);
+      if (p.dir === "down") a.score -= p.status === "confirmed" ? Math.round(w * 1.5) : Math.round(w / 2);
+      if (p.dir === "down" && p.rel !== "niedrig") { if (p.status === "confirmed") bearC = bearC || p; else bearF = bearF || p; }
+      if (p.dir === "up" && p.status === "confirmed" && p.rel !== "niedrig" && p.target && !bullC && !(SG.used[sym] || {})[p.key]) bullC = p;
+    }
+    const dy = DY[sym];
+    if (dy) {
+      if (dy.st.trendUp) { a.score += 10; a.why.push("Tagestrend aufwärts"); }
+      if (dy.st.belowS200) { a.score -= 15; a.why.push("unter 200-Tage-Linie"); }
+      for (const p of dy.det.list) if (p.dir === "down" && p.rel !== "niedrig" && p.status === "confirmed" && !bearC) bearC = Object.assign({}, p, {name: p.name + " (Tageschart)"});
+    }
+    const ns = newsScore(sym), mp = macroPenalty(INFO[sym] ? INFO[sym].sec : "");
+    if (ns.n && Math.abs(ns.score) >= 0.1) { a.score += Math.round(ns.score * 15); a.why.push(ns.score > 0 ? "News positiv" : "News negativ"); }
+    if (mp.p) { a.score -= mp.p; if (mp.names.length) a.why.push("Makro: " + mp.names.join(", ")); }
+    a.newsNeg = ns.score <= -0.4 ? ns.top : null;
+    a.score = Math.max(0, Math.min(100, a.score));
+    a.buy = a.score >= BUY_SCORE && a.up && a.rsi < 72 && !bearC && !bearF && !a.newsNeg;
+    a.bearC = bearC; a.bearF = bearF;
+    const t = SG.open[sym], now = Date.now();
+    if (t) {
+      t.high = Math.max(t.high, a.last);
+      t.stop = Math.max(t.stop, t.high - 2.5 * a.atr);
+      if (a.last >= t.entry + t.risk) t.stop = Math.max(t.stop, t.entry); // nach +1R: Stop auf Einstand
+      let reason = null;
+      if (a.last <= t.stop) reason = "Stop erreicht";
+      else if (a.last >= t.target) reason = "Kursziel erreicht";
+      else if (bearC) reason = "Muster: " + bearC.name + " bestätigt";
+      else if (a.crossDown) reason = "Trend gedreht (EMA9 unter EMA21)";
+      if (reason) {
+        const r = (a.last / t.entry - 1) * 100;
+        delete SG.open[sym]; SG.done.push(r); SG.flash[sym] = {type:"sell", until: now + 120000, reason};
+        signal(sym, "VERKAUFEN", a.last, reason, r, quiet);
+        if ($("auto").checked) S.positions.filter((p) => p.sym === sym && p.auto).forEach((p) => close(p.id));
+        return;
+      }
+      if (a.newsNeg) { t.stop = Math.max(t.stop, a.last - a.atr); t.warn = "Negative Nachricht (" + a.newsNeg.topic + "), Stop eng nachgezogen"; }
+      else if (bearF) { t.stop = Math.max(t.stop, a.last - a.atr); t.warn = "Frühwarnung: " + bearF.name + " bildet sich, Stop eng nachgezogen"; }
+      else t.warn = a.rsi > 75 && a.rsi < a.rsiPrev ? "Momentum lässt nach, Stop eng" : a.last - t.stop < 0.5 * a.atr ? "Kurs nahe am Stop" : null;
+      return;
+    }
+    if (bullC && !bearC && !bearF && !a.newsNeg && a.rsi < 75) {
+      const stop = Math.min(bullC.level - bullC.tol, a.last - a.atr), risk = a.last - stop, reward = bullC.target - a.last;
+      if (risk > 0 && reward >= 1.5 * risk) {
+        (SG.used[sym] = SG.used[sym] || {})[bullC.key] = true;
+        SG.open[sym] = {entry:a.last, stop, risk, target:bullC.target, high:a.last, t:now, src:bullC.name};
+        SG.flash[sym] = {type:"buy", until: now + 120000};
+        signal(sym, "KAUFEN", a.last, `Muster: ${bullC.name} bestätigt, Ziel ${fmt(bullC.target)}, Chance/Risiko 1:${fmt(reward / risk, 1)}`, null, quiet);
+        if ($("auto").checked && !quiet) autoBuy(sym, a.last, stop);
+        return;
+      }
+    }
+    if (a.buy) {
+      const risk = 1.5 * a.atr;
+      SG.open[sym] = {entry:a.last, stop:a.last - risk, risk, target:a.last + 3 * risk, high:a.last, t:now};
+      SG.flash[sym] = {type:"buy", until: now + 120000};
+      signal(sym, "KAUFEN", a.last, "Score " + a.score + ": " + a.why.join(", "), null, quiet);
+      if ($("auto").checked && !quiet) autoBuy(sym, a.last, a.last - risk);
+    }
+  }
+
+  // ---------- Muster: Alarme, Protokoll, Erfolgsmessung ----------
+  const STATUS = {forming:"bildet sich", confirmed:"bestätigt"};
+  const DIRTXT = {up:"steigend", down:"fallend", either:"offen"};
+  function handlePatterns(sym, det, quiet) {
+    const prev = SG.seen[sym] || (SG.seen[sym] = {}), c = S.d[sym].q.c;
+    for (const p of det.list) {
+      const rank = {forming:1, confirmed:2};
+      if ((rank[prev[p.key]] || 0) >= rank[p.status]) continue; // nur neue Muster oder Bestätigung melden
+      prev[p.key] = p.status;
+      if (p.rel === "niedrig") continue; // schwache Muster nur auf der Karte
+      const dk = sym + "|" + p.name + "|" + p.status; SG.lastA = SG.lastA || {};
+      if (SG.lastA[dk] > Date.now() - 300000) continue; // gleiche Meldung höchstens alle 5 Minuten
+      SG.lastA[dk] = Date.now();
+      const bear = p.dir === "down";
+      let kind, msg;
+      if (p.status === "forming") { kind = "FRÜHWARNUNG"; msg = `${p.name} bildet sich (${DIRTXT[p.dir]}). ${p.text}.`; }
+      else if (bear) { kind = "MUSTER-ALARM"; msg = `${p.name} bestätigt: ${p.text}.${p.target ? " Kursziel " + fmt(p.target) + "." : ""}`; }
+      else { kind = "AUSBRUCH"; msg = `${p.name} bestätigt: ${p.text}.${p.target ? " Kursziel " + fmt(p.target) + "." : ""}`; }
+      const row = {t:clock(Date.now()), sym, name:p.name, kind, dir:p.dir, rel:p.rel, level:p.level, target:p.target, result:""};
+      SG.plog.unshift(row); if (SG.plog.length > 300) SG.plog.pop();
+      if (p.status === "confirmed" && p.target && p.rel !== "niedrig")
+        SG.track.push({sym, key:p.key, name:p.name, dir:p.dir, level:p.level, target:p.target, atr:p.atr, state:"open", row});
+      if (quiet) continue;
+      if (kind === "AUSBRUCH") { toast(`AUSBRUCH ${sym}: ${msg}`); beep(true); }
+      else alarm(sym, kind, msg);
+    }
+    for (const tr of SG.track) {
+      if (tr.sym !== sym || tr.state !== "open") continue;
+      if (tr.dir === "up" ? c >= tr.target : c <= tr.target) { tr.state = "ok"; tr.row.result = "Ziel erreicht"; }
+      else if (tr.dir === "up" ? c < tr.level - tr.atr : c > tr.level + tr.atr) {
+        tr.state = "fail"; tr.row.result = "Fehlausbruch";
+        if (!quiet) alarm(sym, "FEHLAUSBRUCH", `${tr.name}: Kurs wieder hinter ${fmt(tr.level)}. Der Ausbruch ist gescheitert, Gegenbewegung möglich.`);
+      }
+    }
+  }
+  function alarm(sym, kind, msg) {
+    SG.alarms.unshift({t:clock(Date.now()), sym, kind, msg});
+    if (SG.alarms.length > 6) SG.alarms.pop();
+    SG.alarmUntil = SG.alarmUntil || {}; SG.alarmUntil[sym] = Date.now() + 180000;
+    renderAlarm();
+    const tt = document.createElement("div"); tt.className = "toast red"; tt.textContent = `${kind} ${sym}: ${msg}`;
+    $("toasts").appendChild(tt); setTimeout(() => tt.remove(), 12000); trimToasts();
+    siren();
+  }
+  function renderAlarm() {
+    const box = $("alarm"); box.hidden = !SG.alarms.length;
+    $("alarmList").replaceChildren(...SG.alarms.slice(0, 4).map((a) => {
+      const li = document.createElement("li"), b = document.createElement("b");
+      b.textContent = `${a.t} ${a.kind} ${a.sym}: `; li.append(b, document.createTextNode(a.msg)); return li;
+    }));
+  }
+  function siren() {
+    if (!$("sound").checked) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.18, 0.36].forEach((dt, i) => {
+        const o = audio.createOscillator(), g = audio.createGain();
+        o.type = "square"; o.frequency.value = i % 2 ? 660 : 990; g.gain.value = 0.06;
+        o.connect(g); g.connect(audio.destination); o.start(audio.currentTime + dt); o.stop(audio.currentTime + dt + 0.15);
+      });
+    } catch (e) {}
+  }
+  function renderPatterns() {
+    const tb = $("patLog"); tb.replaceChildren();
+    for (const r of SG.plog.slice(0, 120)) {
+      const tr = document.createElement("tr");
+      [r.t, r.sym, r.name, r.kind, DIRTXT[r.dir], r.rel, fmt(r.level), r.target ? fmt(r.target) : "—", r.result].forEach((v, i) => {
+        const td = document.createElement("td"); td.textContent = v;
+        if (i === 3) td.className = r.kind === "AUSBRUCH" ? "up" : "red-t";
+        if (i === 6 || i === 7) td.className = "num";
+        if (i === 8) td.className = v === "Ziel erreicht" ? "up" : v ? "red-t" : "";
+        tr.appendChild(td); });
+      tb.appendChild(tr);
+    }
+    if (!SG.plog.length) { const tr = document.createElement("tr"), td = document.createElement("td"); td.colSpan = 9; td.className = "muted"; td.textContent = "Noch keine Muster erkannt. Jede Watchlist-Aktie braucht 64 Abrufe (gut 30 Minuten) Kursverlauf."; tr.appendChild(td); tb.appendChild(tr); }
+    const agg = {};
+    for (const tr of SG.track) { const a = agg[tr.name] || (agg[tr.name] = {n:0, ok:0, fail:0}); a.n++; if (tr.state === "ok") a.ok++; if (tr.state === "fail") a.fail++; }
+    const sb = $("patStats"); sb.replaceChildren();
+    for (const [name, a] of Object.entries(agg).sort((x, y) => y[1].n - x[1].n)) {
+      const tr = document.createElement("tr"), done = a.ok + a.fail;
+      [name, a.n, a.ok, a.fail, a.n - done, done ? Math.round(a.ok / done * 100) + " %" : "—"].forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i) td.className = "num"; tr.appendChild(td); });
+      sb.appendChild(tr);
+    }
+    if (!sb.children.length) { const tr = document.createElement("tr"), td = document.createElement("td"); td.colSpan = 6; td.className = "muted"; td.textContent = "Noch keine bestätigten Muster."; tr.appendChild(td); sb.appendChild(tr); }
+  }
+
+  let audio = null;
+  function beep(hi) {
+    if (!$("sound").checked) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.frequency.value = hi ? 880 : 440; g.gain.value = 0.08; o.connect(g); g.connect(audio.destination);
+      o.start(); o.stop(audio.currentTime + 0.25);
+    } catch (e) {}
+  }
+  function signal(sym, type, px, reason, r, quiet) {
+    SG.log.unshift({t:clock(Date.now()), sym, type, px, reason, r});
+    if (SG.log.length > 200) SG.log.pop();
+    if (!quiet) { toast(`${type}: ${sym} bei ${usd(px)}${r != null ? " (" + signed(r, " %") + ")" : ""}. ${reason}`); beep(type === "KAUFEN"); }
+  }
+  function autoBuy(sym, entry, stop) {
+    const lev = +$("autoLev").value;
+    const equity = S.cash + S.positions.reduce((s, p) => s + p.amt + pnlOf(p, price(p.sym) ?? p.entry), 0);
+    const exposure = equity * +$("risk").value / ((entry - stop) / entry); // Positionsgröße aus Risiko
+    const amt = Math.min(S.cash, equity * 0.2, Math.round(exposure / lev)); // max. 20 % des Depots je Position
+    if (amt < 10) return toast("Auto-Handel: zu wenig freies Spielgeld für " + sym + ".");
+    S.cash -= amt;
+    S.positions.push({id:Math.random().toString(36).slice(2), sym, entry, amt, lev, ko: lev > 1 ? entry * (1 - 1 / lev) : null, auto:true});
+    log(sym, `Auto-Kauf zu ${usd(entry)}, Einsatz ${usd(amt)}${lev > 1 ? ", Hebel " + lev : ""}`, null);
+  }
+  function renderSignals() {
+    const d = SG.done, w = d.filter((r) => r > 0), l = d.filter((r) => r <= 0);
+    const sw = w.reduce((s, x) => s + x, 0), sl = -l.reduce((s, x) => s + x, 0);
+    $("gN").textContent = d.length + (Object.keys(SG.open).length ? " (+" + Object.keys(SG.open).length + " offen)" : "");
+    $("gHit").textContent = d.length ? Math.round(w.length / d.length * 100) + " %" : "—";
+    $("gWin").textContent = w.length ? signed(sw / w.length, " %") : "—";
+    $("gLoss").textContent = l.length ? signed(-sl / l.length, " %") : "—";
+    $("gPf").textContent = sl > 0 ? fmt(sw / sl) : w.length ? "∞" : "—";
+    const sum = sw - sl; $("gSum").textContent = d.length ? signed(sum, " %") : "—";
+    $("gSum").className = sum > 0 ? "up" : sum < 0 ? "down" : "";
+    const tb = $("sigLog"); tb.replaceChildren();
+    for (const s of SG.log) {
+      const tr = document.createElement("tr");
+      [s.t, s.sym, s.type, fmt(s.px), s.reason, s.r == null ? "" : signed(s.r, " %")].forEach((v, i) => {
+        const td = document.createElement("td"); td.textContent = v;
+        if (i === 2) { td.style.fontWeight = "700"; td.className = s.type === "KAUFEN" ? "up" : "down"; }
+        if (i === 3 || i === 5) td.className = "num" + (i === 5 && s.r != null ? (s.r > 0 ? " up" : " down") : "");
+        if (i === 4) { td.className = "why"; td.style.whiteSpace = "normal"; td.style.minWidth = "220px"; }
+        tr.appendChild(td); });
+      tb.appendChild(tr);
+    }
+    if (!SG.log.length) { const tr = document.createElement("tr"), td = document.createElement("td"); td.colSpan = 6; td.className = "muted"; td.textContent = "Noch keine Signale. Jede Watchlist-Aktie braucht 30 Abrufe (15 Minuten) Vorlauf."; tr.appendChild(td); tb.appendChild(tr); }
+    $("sigInfo").textContent = "Watchlist: " + S.fav.length + " Aktien werden ausgewertet";
+  }
+
+  // Live: Watchlist zuerst, sobald 30 s um sind; sonst reihum durch den S&P 500
+  function nextJob() {
+    const now = Date.now();
+    let best = null, bestAt = Infinity;
+    for (const s of S.fav) {
+      const at = S.d[s] ? S.d[s].at : 0;
+      if (now - at >= INTERVAL * 1000 && !S.pending.has(s) && at < bestAt) { best = s; bestAt = at; }
+    }
+    if (best) return best;
+    if (S.alp.on) return null; // Alpaca übernimmt den S&P 500
+    for (let i = 0; i < SP.length; i++) {
+      const s = SP[(S.rot + i) % SP.length].s;
+      if (!S.fav.includes(s) && !S.pending.has(s)) { S.rot = (S.rot + i + 1) % SP.length; return s; }
+    }
+    return null;
+  }
+  function pump() {
+    if (S.mode !== "live" || !S.key || Date.now() < S.pausedUntil || S.inflight >= 4) return;
+    const sym = nextJob(); if (!sym) return;
+    S.pending.add(sym); S.inflight++;
+    liveQuote(sym).then((q) => store(sym, q)).catch((e) => {
+      if (e.auth) { stop(); showErr(e.message); return; }
+      if (e.rate) { S.pausedUntil = Date.now() + 15000; return; }
+      D(sym).err = e.message; D(sym).at = Date.now(); S.tableDirty = true; S.dirty = true;
+    }).finally(() => { S.inflight--; S.pending.delete(sym); });
+  }
+  function demoRound() {
+    const now = Date.now();
+    new Set([...SP.map((x) => x.s), ...S.fav]).forEach((s) => store(s, demoQuote(s), now));
+    S.demoNext = now + INTERVAL * 1000;
+    if (!S.seeding) demoNews();
+  }
+  function showErr(msg) { const e = $("err"); e.hidden = !msg; e.textContent = msg || ""; }
+
+  // ---------- Kennzahlen ----------
+  const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+  function stats(hist) {
+    const p = hist.map((h) => h.p), out = {};
+    if (p.length >= 20) {
+      const s5 = mean(p.slice(-5)), s20 = mean(p.slice(-20)), diff = (s5 - s20) / s20;
+      out.trend = diff > 0.0008 ? "auf" : diff < -0.0008 ? "ab" : "seit";
+    } else if (p.length >= 1) out.trend = "wenig";
+    if (p.length >= 15) {
+      let g = 0, l = 0;
+      for (let i = p.length - 14; i < p.length; i++) { const ch = p[i] - p[i-1]; ch > 0 ? g += ch : l -= ch; }
+      out.rsi = l === 0 ? (g === 0 ? 50 : 100) : 100 - 100 / (1 + g / l);
+    }
+    if (p.length >= 4) {
+      const r = []; for (let i = 1; i < p.length; i++) r.push(Math.abs(p[i] / p[i-1] - 1) * 100);
+      out.vol = mean(r.slice(-30));
+    }
+    return out;
+  }
+  const rangePos = (q) => q && q.h > q.l ? Math.min(100, Math.max(0, (q.c - q.l) / (q.h - q.l) * 100)) : null;
+
+  // ---------- Watchlist-Karten ----------
+  const cards = {};
+  function makeCard(sym) {
+    const el = document.createElement("article");
+    el.className = "card";
+    el.innerHTML = `
+      <div class="card-top"><span class="sym"></span><button class="small" data-act="rm" aria-label="Aus Watchlist entfernen">✕</button></div>
+      <div class="cname"></div>
+      <div class="card-top"><span class="price">—</span><span class="chg">—</span></div>
+      <div class="newsline" data-k="news" hidden></div>
+      <div class="sigbox">
+        <div class="sigrow"><span class="sig" data-k="sig">—</span><span class="score" data-k="score"></span></div>
+        <div class="meter"><i data-k="meter" style="width:0"></i></div>
+        <div class="lv" data-k="lv"></div>
+        <div class="why" data-k="why"></div>
+      </div>
+      <div class="pats" data-k="pats"></div>
+      <div class="daybox empty">
+        <div class="sigrow"><b class="small-t">1 Jahr · Tageskerzen</b><span class="small-t" data-k="dtrend"></span></div>
+        <div class="muted small-t" data-k="dinfo"></div>
+        <svg class="dchart" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true"><path class="d200"/><path class="d50"/><path class="dc"/><g class="dlines"></g></svg>
+        <div class="dleg small-t"><span class="l-c">Kurs</span><span class="l-50">50 Tage</span><span class="l-200">200 Tage</span></div>
+        <div class="kv" data-k="dkv"></div>
+        <div class="pats" data-k="dpats"></div>
+        <div class="bt" data-k="bt"></div>
+      </div>
+      <svg class="spark" viewBox="0 0 300 48" preserveAspectRatio="none" aria-hidden="true"><path fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><g class="plines"></g></svg>
+      <div class="muted" style="font-size:.72rem;display:flex;justify-content:space-between"><span data-k="lo">Tief —</span><span>Tagesspanne</span><span data-k="hi">Hoch —</span></div>
+      <div class="range"><i style="left:50%"></i></div>
+      <div class="kv">
+        <div><span class="muted">Trend</span><b data-k="trend">—</b></div>
+        <div><span class="muted">RSI</span><b data-k="rsi">—</b></div>
+        <div><span class="muted">Schwankung</span><b data-k="vol">—</b></div>
+      </div>
+      <div class="alerts">
+        <input type="number" step="0.01" placeholder="Alarm über $" aria-label="Alarm wenn über">
+        <input type="number" step="0.01" placeholder="Alarm unter $" aria-label="Alarm wenn unter">
+        <span class="muted" data-k="n"></span>
+      </div>
+      <div class="err" data-k="err" hidden></div>`;
+    el.querySelector(".sym").textContent = sym;
+    el.querySelector(".cname").textContent = INFO[sym] ? INFO[sym].n : "";
+    const [above, below] = el.querySelectorAll(".alerts input");
+    above.id = "above-" + sym; below.id = "below-" + sym;
+    const save = () => { S.alerts[sym] = {above: parseFloat(above.value) || null, below: parseFloat(below.value) || null, hit:false}; };
+    above.addEventListener("change", save); below.addEventListener("change", save);
+    el.querySelector('[data-act="rm"]').addEventListener("click", () => toggleFav(sym));
+    $("cards").appendChild(el);
+    return cards[sym] = el;
+  }
+  function renderCard(sym) {
+    const el = cards[sym] || makeCard(sym), d = S.d[sym], k = (n) => el.querySelector(`[data-k="${n}"]`);
+    const errEl = k("err"); errEl.hidden = !(d && d.err); errEl.textContent = d && d.err ? sym + ": " + d.err + " (nur US-Symbole gratis)" : "";
+    if (!d || !d.q) return;
+    const q = d.q, st = stats(d.hist);
+    el.querySelector(".price").textContent = usd(q.c);
+    const chg = el.querySelector(".chg");
+    chg.textContent = signed(q.dp, " %"); chg.className = "chg " + (q.dp > 0 ? "up" : q.dp < 0 ? "down" : "");
+    k("lo").textContent = "Tief " + fmt(q.l); k("hi").textContent = "Hoch " + fmt(q.h);
+    el.querySelector(".range i").style.left = (rangePos(q) ?? 50) + "%";
+    const T = {auf:["aufwärts","up"], ab:["abwärts","down"], seit:["seitwärts",""], wenig:["sammelt …",""]}[st.trend] || ["—",""];
+    const tr = k("trend"); tr.textContent = T[0]; tr.className = T[1];
+    k("rsi").textContent = st.rsi == null ? "ab 15 Abr." : fmt(st.rsi, 0);
+    k("vol").textContent = st.vol == null ? "—" : fmt(st.vol, 3) + " %";
+    k("n").textContent = d.hist.length + " Abr.";
+    const p = d.hist.map((h) => h.p), path = el.querySelector("path");
+    if (p.length > 1) {
+      const mn = Math.min(...p), mx = Math.max(...p), span = mx - mn || 1;
+      path.setAttribute("d", p.map((v, i) => (i ? "L" : "M") + (i / (p.length - 1) * 300).toFixed(1) + "," + (44 - (v - mn) / span * 40).toFixed(1)).join(""));
+      path.setAttribute("stroke", p[p.length-1] >= p[0] ? "var(--up)" : "var(--down)");
+      // Musterlinien
+      const g = el.querySelector(".plines"), det = SG.pat[sym], h0 = d.hist[0].i, nT = d.hist.length - 1;
+      g.replaceChildren();
+      if (det && det.bars) for (const pt of det.list) for (const [b1, p1, b2, p2] of pt.lines || []) {
+        const B = det.bars; if (!B[b1] || !B[b2]) continue;
+        const x = (b) => Math.max(0, Math.min(300, (B[b].first - h0 + B[b].n / 2) / nT * 300));
+        const y = (v) => Math.max(0, Math.min(48, 44 - (v - mn) / span * 40));
+        const ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        ln.setAttribute("x1", x(b1)); ln.setAttribute("y1", y(p1)); ln.setAttribute("x2", x(b2)); ln.setAttribute("y2", y(p2));
+        ln.setAttribute("stroke", pt.dir === "up" && pt.status === "confirmed" ? "var(--up)" : "var(--alarm)");
+        ln.setAttribute("stroke-width", "1.5"); ln.setAttribute("stroke-dasharray", "4 3"); ln.setAttribute("vector-effect", "non-scaling-stroke");
+        g.appendChild(ln);
+      }
+    }
+    // Musterliste
+    const pbox = k("pats"), det2 = SG.pat[sym];
+    pbox.replaceChildren();
+    if (d.hist.length < PAT_MIN) { pbox.textContent = `Muster ab ${PAT_MIN} Abrufen (${d.hist.length} / ${PAT_MIN})`; pbox.className = "pats muted"; }
+    else {
+      pbox.className = "pats";
+      const list = det2 ? det2.list : [];
+      if (!list.length) { const s = document.createElement("span"); s.className = "muted"; s.textContent = "Kein Chartmuster aktiv"; pbox.appendChild(s); }
+      for (const pt of list) {
+        const s = document.createElement("span");
+        s.className = "pchip " + (pt.dir === "up" ? (pt.status === "confirmed" ? "pc-up" : "pc-upf") : "pc-red");
+        s.textContent = `${pt.name} · ${STATUS[pt.status]}${pt.target ? " · Ziel " + fmt(pt.target) : ""}`;
+        s.title = pt.text + " (Verlässlichkeit: " + pt.rel + ")";
+        pbox.appendChild(s);
+      }
+    }
+    el.classList.toggle("s-alarm", !!(SG.alarmUntil && SG.alarmUntil[sym] > Date.now()));
+    renderDay(el, sym, k);
+    const nl = newsLine(sym), ne = k("news");
+    ne.hidden = !nl.text; ne.textContent = nl.text; ne.className = "newsline" + (nl.neg ? " n-neg" : nl.pos ? " n-pos" : "");
+    const a = S.alerts[sym];
+    el.classList.toggle("alert", !!(a && a.hit));
+    // Signal
+    const an = SG.an[sym], t = SG.open[sym], fl = SG.flash[sym] && SG.flash[sym].until > Date.now() ? SG.flash[sym] : null;
+    const sig = k("sig"); let label = "—", cls = "", lv = "", why = "";
+    if (!an || an.state === "warm") { label = "AUFWÄRMEN"; why = `${an ? an.n : d.hist.length} / ${WARMUP} Abrufe gesammelt`; }
+    else {
+      if (fl && fl.type === "sell" && !t) { label = "VERKAUFEN"; cls = "sell"; why = fl.reason; }
+      else if (t && fl && fl.type === "buy") { label = "KAUFEN"; cls = "buy"; }
+      else if (t) { label = t.warn ? "HALTEN · ACHTUNG" : "HALTEN"; cls = t.warn ? "warn" : "hold"; why = t.warn || ""; }
+      else if (!an.up && an.score < 30) { label = "MEIDEN"; cls = ""; }
+      else { label = "WARTEN"; }
+      if (t) lv = `Einstieg ${fmt(t.entry)} · Stop ${fmt(t.stop)} · Ziel ${fmt(t.target)} · ${signed((an.last / t.entry - 1) * 100, " %")}`;
+      if (!why) why = an.why.join(" · ");
+      k("score").textContent = "Score " + an.score + "/100";
+      k("meter").style.width = an.score + "%";
+    }
+    sig.textContent = label; sig.className = "sig " + cls;
+    k("lv").textContent = lv; k("why").textContent = why;
+    el.classList.toggle("s-buy", cls === "buy"); el.classList.toggle("s-sell", cls === "sell");
+  }
+  function toggleFav(sym) {
+    if (S.fav.includes(sym)) {
+      if (S.positions.some((p) => p.sym === sym)) return toast("Verkaufe zuerst die offene Position in " + sym + ".");
+      S.fav = S.fav.filter((s) => s !== sym); cards[sym] && cards[sym].remove(); delete cards[sym];
+      delete SG.open[sym]; delete SG.an[sym]; delete SG.flash[sym];
+    } else {
+      if (S.fav.length >= 15) return toast("Maximal 15 Aktien in der Watchlist, sonst bleibt kaum Platz für den Rest des S&P 500.");
+      S.fav.push(sym); renderCard(sym);
+      if (S.tdKey || S.mode === "demo") wantDaily(sym);
+      if (S.mode === "demo" && !D(sym).q) store(sym, demoQuote(sym));
+    }
+    fillSelect(); S.dirty = true; S.tableDirty = true;
+  }
+
+  // ---------- Historische Tageskurse (Twelve Data) ----------
+  const DY = {};
+  function wantDaily(sym) { if (DY[sym] || S.dq.includes(sym) || S.dfail[sym]) return; S.dq.push(sym); }
+  function histMsg(m) { showErr(m); }
+  async function fetchDaily(sym) {
+    const r = await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(sym)}&interval=1day&outputsize=300&apikey=${encodeURIComponent(S.tdKey)}`);
+    let j = null; try { j = await r.json(); } catch (e) {}
+    if (!j || j.status === "error" || !j.values) { const e = new Error(j && j.message ? j.message : "keine Antwort"); e.code = (j && j.code) || r.status; throw e; }
+    return Daily.fromTwelve(j.values);
+  }
+  function setDaily(sym, B) {
+    if (B.length < 60) { S.dfail[sym] = "zu wenig Historie"; return; }
+    const e = {B};
+    DY[sym] = e; refreshDay(sym, true); S.dirty = true; S.tableDirty = true;
+    setTimeout(() => {
+      e.sig = Daily.backtestSignals(B);
+      const pb = Daily.backtestPatterns(B); e.pat = pb.sum; e.events = pb.events;
+      S.dirty = true;
+    }, 0);
+  }
+  // Heutige Kerze aus dem Live-Kurs anhängen bzw. ersetzen, damit Tagesmuster schon während des Handels reagieren
+  function liveBars(sym) {
+    const e = DY[sym], q = S.d[sym] && S.d[sym].q;
+    if (!q || !q.o) return e.B;
+    const today = new Date((q.t || Date.now() / 1000) * 1000).toISOString().slice(0, 10), B = e.B.slice(), last = B[B.length - 1];
+    if (last.d > today) return B;
+    const bar = {d:today, o:q.o, h:q.h, l:q.l, c:q.c, v:0, id:B.length, first:B.length, n:1};
+    if (last.d === today) { bar.id = last.id; bar.first = last.first; bar.v = last.v; B[B.length - 1] = bar; } else B.push(bar);
+    return B;
+  }
+  function refreshDay(sym, first) {
+    const e = DY[sym]; if (!e) return;
+    e.live = liveBars(sym); e.st = Daily.stats(e.live); e.det = Patterns.detectBars(e.live, null);
+    dayAlarms(sym, e);
+  }
+  let lastDayRefresh = 0;
+  function refreshDays() {
+    if (Date.now() - lastDayRefresh < 60000) return;
+    lastDayRefresh = Date.now(); S.fav.forEach((s) => refreshDay(s)); S.dirty = true;
+  }
+  function dayAlarms(sym, e) {
+    if (!S.fav.includes(sym)) return;
+    const seen = SG.seenDay[sym] || (SG.seenDay[sym] = {}), rank = {forming:1, confirmed:2};
+    for (const p of e.det.list) {
+      if ((seen[p.key] || 0) >= rank[p.status]) continue;
+      seen[p.key] = rank[p.status];
+      if (p.rel === "niedrig") continue;
+      const msg = `${p.name} ${STATUS[p.status]}: ${p.text}.${p.target ? " Kursziel " + fmt(p.target) + "." : ""}`;
+      if (p.dir === "up" && p.status === "confirmed") toast(`TAGESCHART ${sym}: ${msg}`);
+      else alarm(sym, p.status === "forming" ? "FRÜHWARNUNG TAGESCHART" : "MUSTER-ALARM TAGESCHART", msg);
+    }
+  }
+  function pumpDaily() {
+    if (!S.dq.length) return;
+    if (S.mode === "demo") {
+      while (S.dq.length) { const s = S.dq.shift(), q = S.d[s] && S.d[s].q; if (q) setDaily(s, Daily.demo(q.pc || q.c)); else S.dq.push(s); if (!q) break; }
+      return;
+    }
+    if (S.mode !== "live" || !S.tdKey || Date.now() < S.dpause) return;
+    const sym = S.dq.shift();
+    fetchDaily(sym).then((B) => setDaily(sym, B)).catch((e) => {
+      if (e.code === 429) { S.dq.unshift(sym); S.dpause = Date.now() + 61000; histMsg("Twelve Data: Abruflimit erreicht, Pause 1 Minute."); }
+      else if (e.code === 401 || e.code === 403) { S.dq = []; S.tdKey = ""; histMsg("Twelve Data hat den Schlüssel abgelehnt. Prüfe, ob er vollständig kopiert ist."); }
+      else S.dfail[sym] = e.message;
+      S.dirty = true;
+    });
+  }
+  const pct = (v) => v == null || !isFinite(v) ? "—" : signed(v, " %");
+  function btLine(s) {
+    if (!s) return "rechnet …";
+    if (!s.n) return "keine Trades";
+    return `${s.n} Trades · ${Math.round(s.hit)} % Treffer · PF ${s.pf === Infinity ? "∞" : fmt(s.pf)} · ${pct(s.total)}`;
+  }
+  function renderDay(el, sym, k) {
+    const box = el.querySelector(".daybox"), dy = DY[sym];
+    if (!dy) {
+      box.classList.add("empty");
+      k("dtrend").textContent = "";
+      k("dinfo").textContent = S.dfail[sym] ? "Historie nicht verfügbar: " + S.dfail[sym]
+        : S.dq.includes(sym) ? `Historie wird geladen … (Platz ${S.dq.indexOf(sym) + 1} in der Warteschlange)`
+        : (S.tdKey || S.mode === "demo") ? "Historie folgt" : "Für ein Jahr Historie oben den Twelve-Data-Schlüssel eintragen.";
+      return;
+    }
+    box.classList.remove("empty"); k("dinfo").textContent = "";
+    const B = dy.live || dy.B, st = dy.st, n = B.length, c = B.map((b) => b.c);
+    const tr = k("dtrend"); tr.textContent = st.trend; tr.className = "small-t " + st.tcls;
+    const mn = Math.min(...B.map((b) => b.l)), mx = Math.max(...B.map((b) => b.h)), span = mx - mn || 1;
+    const X = (i) => (i / (n - 1) * 300).toFixed(1), Y = (v) => (66 - (v - mn) / span * 62).toFixed(1);
+    const line = (arr) => arr.map((v, i) => v == null ? null : [i, v]).filter(Boolean).map(([i, v], j) => (j ? "L" : "M") + X(i) + "," + Y(v)).join("");
+    el.querySelector(".dc").setAttribute("d", line(c));
+    el.querySelector(".d50").setAttribute("d", line(c.map((_, i) => Daily.sma(c, 50, i))));
+    el.querySelector(".d200").setAttribute("d", line(c.map((_, i) => Daily.sma(c, 200, i))));
+    const g = el.querySelector(".dlines"); g.replaceChildren();
+    for (const p of dy.det.list) for (const [b1, p1, b2, p2] of p.lines || []) {
+      const ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      ln.setAttribute("x1", X(b1)); ln.setAttribute("y1", Y(p1)); ln.setAttribute("x2", X(b2)); ln.setAttribute("y2", Y(p2));
+      ln.setAttribute("stroke", p.dir === "up" && p.status === "confirmed" ? "var(--up)" : "var(--alarm)");
+      ln.setAttribute("stroke-width", "1.5"); ln.setAttribute("stroke-dasharray", "4 3"); ln.setAttribute("vector-effect", "non-scaling-stroke");
+      g.appendChild(ln);
+    }
+    const kv = k("dkv"); kv.replaceChildren();
+    [["50 Tage", st.s50 ? fmt(st.s50) : "—"], ["200 Tage", st.s200 ? fmt(st.s200) : "—"], ["RSI (Tag)", fmt(st.rsi, 0)],
+     ["3 Monate", pct(st.m3)], ["1 Jahr", pct(st.y1)], ["vom Hoch", pct(st.fromHi)]].forEach(([a, b]) => {
+      const d = document.createElement("div"), s = document.createElement("span"), v = document.createElement("b");
+      s.className = "muted"; s.textContent = a; v.textContent = b; d.append(s, v); kv.appendChild(d); });
+    const pb = k("dpats"); pb.replaceChildren();
+    if (!dy.det.list.length) { const s = document.createElement("span"); s.className = "muted"; s.textContent = "Kein Tagesmuster aktiv"; pb.appendChild(s); }
+    for (const p of dy.det.list) {
+      const s = document.createElement("span");
+      s.className = "pchip " + (p.dir === "up" ? (p.status === "confirmed" ? "pc-up" : "pc-upf") : "pc-red");
+      s.textContent = `Tag: ${p.name} · ${STATUS[p.status]}${p.target ? " · Ziel " + fmt(p.target) : ""}`; s.title = p.text + " (Verlässlichkeit: " + p.rel + ")";
+      pb.appendChild(s);
+    }
+    const bt = k("bt"); bt.replaceChildren();
+    const r1 = document.createElement("div"), r2 = document.createElement("div"), r3 = document.createElement("div");
+    r1.textContent = "Backtest Signale: " + btLine(dy.sig);
+    r2.textContent = "Backtest Muster: " + btLine(dy.pat);
+    r3.textContent = "Nur Halten im selben Zeitraum: " + (dy.sig ? pct(dy.sig.bh) : "…");
+    r3.className = "muted";
+    bt.append(r1, r2, r3);
+  }
+  function renderBacktest() {
+    const syms = S.fav.filter((s) => DY[s] && DY[s].sig);
+    const tb = $("btBody"); tb.replaceChildren();
+    const cls = (v) => v > 0 ? "num up" : v < 0 ? "num down" : "num";
+    for (const s of syms) {
+      const e = DY[s], tr = document.createElement("tr");
+      const cells = [[s, ""], [e.st.trend, e.st.tcls],
+        [e.sig.n, "num"], [e.sig.hit == null ? "—" : Math.round(e.sig.hit) + " %", "num"], [e.sig.pf == null ? "—" : e.sig.pf === Infinity ? "∞" : fmt(e.sig.pf), "num"], [pct(e.sig.total), cls(e.sig.total)],
+        [e.pat ? e.pat.n : "…", "num"], [e.pat && e.pat.n ? pct(e.pat.total) : "—", e.pat ? cls(e.pat.total) : "num"],
+        [pct(e.sig.bh), cls(e.sig.bh)], [pct(e.sig.maxDD), "num down"]];
+      cells.forEach(([v, c]) => { const td = document.createElement("td"); td.textContent = v; td.className = c; tr.appendChild(td); });
+      tb.appendChild(tr);
+    }
+    if (!syms.length) { const tr = document.createElement("tr"), td = document.createElement("td"); td.colSpan = 10; td.className = "muted"; td.textContent = "Noch keine Historie geladen. Trage oben den Twelve-Data-Schlüssel ein und tippe auf „Historie laden“."; tr.appendChild(td); tb.appendChild(tr); }
+    const agg = {};
+    for (const s of Object.keys(DY)) for (const ev of DY[s].events || []) {
+      const a = agg[ev.name] || (agg[ev.name] = {n:0, ok:0, fail:0, exp:0}); a.n++;
+      if (ev.res === "ok") a.ok++; else if (ev.res === "fail") a.fail++; else if (ev.res === "abgelaufen") a.exp++;
+    }
+    const pb = $("btPat"); pb.replaceChildren();
+    for (const [name, a] of Object.entries(agg).sort((x, y) => y[1].n - x[1].n)) {
+      const tr = document.createElement("tr"), done = a.ok + a.fail + a.exp;
+      [name, a.n, a.ok, a.fail, a.exp, done ? Math.round(a.ok / done * 100) + " %" : "—"].forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i) td.className = "num"; tr.appendChild(td); });
+      pb.appendChild(tr);
+    }
+    if (!pb.children.length) { const tr = document.createElement("tr"), td = document.createElement("td"); td.colSpan = 6; td.className = "muted"; td.textContent = "Noch keine Muster im Backtest."; tr.appendChild(td); pb.appendChild(tr); }
+    $("histInfo").textContent = Object.keys(DY).length + " mit Historie" + (S.dq.length ? " · " + S.dq.length + " in Warteschlange" : "");
+  }
+  $("loadHist").addEventListener("click", () => {
+    S.tdKey = $("tdKey").value.trim();
+    if (!S.tdKey && S.mode !== "demo") return toast("Füge zuerst deinen Twelve-Data-Schlüssel ein.");
+    S.dfail = {}; S.fav.forEach(wantDaily); if (lastScan) lastScan.top.slice(0, 5).forEach((r) => wantDaily(r.x.s));
+    pumpDaily(); S.dirty = true;
+  });
+
+  // ---------- Alpaca: alle Ticker im Rundlauf ----------
+  const alpHeaders = () => ({"APCA-API-KEY-ID": S.alp.key, "APCA-API-SECRET-KEY": S.alp.sec});
+  function fromSnap(s) {
+    const tr = s && s.latestTrade, db = s && s.dailyBar, pb = s && s.prevDailyBar;
+    if (!tr || !tr.p || !pb || !pb.c) return null;
+    const c = tr.p, pc = pb.c;
+    return {c, o: db ? db.o : c, h: db ? Math.max(db.h, c) : c, l: db ? Math.min(db.l, c) : c, pc, d: c - pc, dp: (c / pc - 1) * 100,
+            v: db ? db.v : 0, t: Math.floor((Date.parse(tr.t) || Date.now()) / 1000)};
+  }
+  async function alpacaRound() {
+    const A = S.alp, now = Date.now();
+    if (S.mode !== "live" || !A.on || A.busy || now < A.pause || now - A.last < A.every) return;
+    A.busy = true; A.last = now;
+    const syms = [...new Set([...SP.map((x) => x.s), ...S.fav])];
+    try {
+      for (let i = 0; i < syms.length; i += 100) {
+        const r = await fetch("https://data.alpaca.markets/v2/stocks/snapshots?feed=iex&symbols=" + encodeURIComponent(syms.slice(i, i + 100).join(",")), {headers: alpHeaders()});
+        if (r.status === 401 || r.status === 403) { A.on = false; showErr("Alpaca hat die Schlüssel abgelehnt. Prüfe Key-ID und Secret."); break; }
+        if (r.status === 429) { A.pause = Date.now() + 60000; showErr("Alpaca: Abruflimit erreicht, Pause 1 Minute. Wähle einen langsameren Rundlauf."); break; }
+        if (!r.ok) throw new Error("Alpaca antwortet nicht (Status " + r.status + ").");
+        const j = await r.json(), t = Date.now();
+        for (const [sym, snap] of Object.entries(j)) { const q = fromSnap(snap); if (q) store(sym, q, t); }
+      }
+      A.rounds++; A.lastOk = Date.now();
+    } catch (e) { showErr(e.message + " Falls der Browser den Abruf blockiert (CORS), schick mir die Meldung."); }
+    finally { A.busy = false; }
+  }
+
+  // ---------- Nachrichten: Alpaca News (Benzinga) ----------
+  const SPSET = new Set(SP.map((x) => x.s));
+  const NW = {items:[], ids:new Set(), ws:null, state:"aus", retry:0, llmKey:"", llmModel:"claude-haiku-5-5", llmBusy:0, llmErr:"",
+              macro:{}, mLast:0, mBusy:false, mEvents:[], gdelt:true};
+  const TOPICS = [
+    ["Quartalszahlen", /\b(earnings|eps|revenue|quarterly|q[1-4]\b|results|profit)/i, 1],
+    ["Prognose", /\b(guidance|outlook|forecast|full-year|fy20)/i, 1],
+    ["Analysten", /\b(upgrade|downgrade|price target|initiates|overweight|underweight|outperform|underperform|buy rating|sell rating|neutral rating)/i, 0.7],
+    ["Übernahme", /\b(acquir|merger|takeover|buyout|deal to buy|to buy .* for \$)/i, 1],
+    ["Recht/Regulierung", /\b(lawsuit|sec\b|doj|ftc|antitrust|investigat|probe|fda|recall|fine[sd]?\b|settle|subpoena)/i, 0.8],
+    ["Kapital", /\b(dividend|buyback|repurchase|offering|stock split)/i, 0.5],
+    ["Management", /\b(ceo|cfo|resign|steps down|appoint|names .* chief)/i, 0.5],
+    ["Makro", /\b(fed\b|federal reserve|tariff|inflation|cpi\b|jobs report|rate cut|rate hike)/i, 0.4]];
+  const TOPIC_W = Object.fromEntries(TOPICS.map(([n, , w]) => [n, w])); TOPIC_W.Sonstiges = 0.3;
+  const POS = /\b(beats?|tops?|exceeds?|surpass\w*|raises?|raised|upgrades?d?|record|surg\w*|soar\w*|jumps?|rall\w*|strong(er)?|approv\w*|wins?|partnership|outperform|overweight|boost\w*|expands?|accelerat\w*|higher|gains?|buybacks?|repurchas\w*|dividend (increase|hike))\b/gi;
+  const NEG = /\b(miss(es|ed)?|falls? short|cuts?|lowers?|lowered|downgrades?d?|plung\w*|tumbl\w*|slump\w*|drops?|sinks?|weak(er|ness)?|lawsuit|probe|investigat\w*|recall\w*|delay\w*|loss(es)?|layoffs?|warns?|warning|bankrupt\w*|fraud|halt\w*|underperform|underweight|declin\w*|resigns?|slows?|disappoint\w*)\b/gi;
+  function classify(text) {
+    let topic = "Sonstiges"; for (const [n, re] of TOPICS) if (re.test(text)) { topic = n; break; }
+    const p = (text.match(POS) || []).length, n = (text.match(NEG) || []).length;
+    const sent = p + n ? (p - n) / (p + n) * Math.min(1, (p + n) / 2) : 0;
+    return {topic, sent};
+  }
+  function priceAt(d, t) { let v = null; for (const h of d.hist) { if (h.t <= t) v = h.p; else break; } return v; }
+  function addNews(n, via) {
+    if (!n || NW.ids.has(n.id)) return; NW.ids.add(n.id);
+    const syms = [...new Set((n.symbols || []).filter((s) => SPSET.has(s) || S.fav.includes(s)))];
+    const pub = Date.parse(n.created_at) || Date.now(), seen = Date.now(), cl = classify((n.headline || "") + " " + (n.summary || ""));
+    const it = {id:n.id, head:n.headline || "", url: /^https?:\/\//.test(n.url || "") ? n.url : "", src:n.source || "", syms, pub, seen, lag:(seen - pub) / 1000,
+                topic:cl.topic, sent:cl.sent, imp:0.6, how:"Wortliste", base:{}, pre:{}, rx:{}, first:{}, old: seen - pub > 45 * 60000};
+    for (const s of syms) {
+      const d = S.d[s]; if (!d || !d.q) continue;
+      it.base[s] = d.q.c;
+      const p0 = priceAt(d, pub - 5 * 60000); it.pre[s] = p0 ? (d.q.c / p0 - 1) * 100 : null; // Bewegung schon vor dem Eintreffen
+    }
+    NW.items.unshift(it); if (NW.items.length > 300) NW.items.pop();
+    if (NW.llmKey && syms.length && !it.old) llmRate(it); else if (!it.old) newsAlert(it);
+    S.dirty = true;
+  }
+  async function llmRate(it) {
+    if (NW.llmBusy >= 4) { newsAlert(it); return; }
+    NW.llmBusy++;
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {method:"POST",
+        headers:{"content-type":"application/json", "x-api-key":NW.llmKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true"},
+        body: JSON.stringify({model:NW.llmModel, max_tokens:100, messages:[{role:"user", content:
+          `Bewerte die Wirkung dieser Finanznachricht auf den Aktienkurs von ${it.syms.join(", ")}. Antworte nur mit JSON: {"sentiment": -1 bis 1, "topic": eines von [Quartalszahlen, Prognose, Analysten, Übernahme, Recht/Regulierung, Kapital, Management, Makro, Sonstiges], "wichtig": 0 bis 1}.\nSchlagzeile: ${it.head}`}]})});
+      const j = await r.json();
+      if (j.error) NW.llmErr = j.error.message || "Fehler";
+      const m = ((j.content || []).map((c) => c.text || "").join("")).match(/\{[\s\S]*\}/);
+      if (m) {
+        const o = JSON.parse(m[0]);
+        if (isFinite(o.sentiment)) { it.sent = clamp(+o.sentiment, -1, 1); it.how = "LLM"; }
+        if (o.topic && TOPIC_W[o.topic] != null) it.topic = o.topic;
+        if (isFinite(o.wichtig)) it.imp = clamp(+o.wichtig, 0, 1);
+      }
+    } catch (e) { NW.llmErr = e.message; }
+    finally { NW.llmBusy--; newsAlert(it); S.dirty = true; }
+  }
+  function newsAlert(it) {
+    for (const s of it.syms) {
+      if (!S.fav.includes(s)) continue;
+      const pre = it.pre[s], priced = pre != null && Math.abs(pre) >= 0.3 && Math.sign(pre) === Math.sign(it.sent);
+      const msg = `${it.topic}: „${it.head}“ (Stimmung ${signed(it.sent, "")}${priced ? ", Kurs hat sich schon " + signed(pre, " %") + " bewegt" : ""}).`;
+      if (it.sent <= -0.4) alarm(s, "NEWS-ALARM", msg);
+      else if (it.sent >= 0.4) toast(`NEWS ${s}: ${msg}`);
+    }
+  }
+  function newsConnect() {
+    if (S.mode !== "live" || !S.alp.on || NW.ws) return;
+    try { NW.ws = new WebSocket("wss://stream.data.alpaca.markets/v1beta1/news"); } catch (e) { NW.state = "Fehler beim Verbinden"; return; }
+    NW.state = "verbinde …";
+    NW.ws.onmessage = (ev) => {
+      let arr; try { arr = JSON.parse(ev.data); } catch (e) { return; }
+      for (const m of [].concat(arr)) {
+        if (m.T === "success" && m.msg === "connected") NW.ws.send(JSON.stringify({action:"auth", key:S.alp.key, secret:S.alp.sec}));
+        else if (m.T === "success" && m.msg === "authenticated") { NW.ws.send(JSON.stringify({action:"subscribe", news:["*"]})); NW.state = "live"; NW.retry = 0; }
+        else if (m.T === "error") NW.state = "Fehler " + m.code + ": " + m.msg;
+        else if (m.T === "n") addNews(m, "stream");
+      }
+      S.dirty = true;
+    };
+    NW.ws.onclose = () => {
+      NW.ws = null;
+      if (S.mode === "live" && S.alp.on) { NW.retry = Math.min(NW.retry + 1, 6); NW.state = "getrennt, neuer Versuch …"; setTimeout(newsConnect, 2000 * 2 ** NW.retry); }
+      else NW.state = "aus";
+    };
+  }
+  async function newsBackfill() {
+    try {
+      const r = await fetch("https://data.alpaca.markets/v1beta1/news?limit=50&sort=desc", {headers: alpHeaders()});
+      if (!r.ok) return;
+      const j = await r.json(); (j.news || []).slice().reverse().forEach((n) => addNews(n, "rest"));
+    } catch (e) {}
+  }
+  // Reaktion nach 1, 5, 15, 30 Minuten und Verzögerung bis zur ersten Bewegung ab 0,3 %
+  const HZ = [1, 5, 15, 30];
+  function newsTrack() {
+    const now = Date.now();
+    for (const it of NW.items) {
+      if (it.old || now - it.seen > 35 * 60000) continue;
+      for (const s of Object.keys(it.base)) {
+        const d = S.d[s]; if (!d || !d.q) continue;
+        const mv = (d.q.c / it.base[s] - 1) * 100;
+        if (it.first[s] == null && Math.abs(mv) >= 0.3) it.first[s] = (now - it.pub) / 60000;
+        const rx = it.rx[s] || (it.rx[s] = {});
+        for (const h of HZ) if (rx[h] == null && now >= it.seen + h * 60000 && d.at >= it.seen + h * 60000 - 20000) rx[h] = mv;
+      }
+    }
+  }
+  function newsScore(sym) {
+    const now = Date.now(); let sc = 0, n = 0, top = null;
+    for (const it of NW.items) {
+      if (!it.syms.includes(sym) || now - it.pub > 120 * 60000) continue;
+      const pre = it.pre[sym], priced = pre != null && Math.abs(pre) >= 0.3 && Math.sign(pre) === Math.sign(it.sent);
+      const w = it.sent * it.imp * (TOPIC_W[it.topic] ?? 0.3) * Math.exp(-(now - it.pub) / (45 * 60000)) * (priced ? 0.5 : 1) * calib(it.topic);
+      sc += w; n++; if (!top || Math.abs(w) > Math.abs(top.w)) top = {w, it};
+    }
+    return {score: clamp(sc, -1, 1), n, top: top && top.it};
+  }
+  // Wirkung je Thema aus den bisherigen Messungen: trifft die Stimmung die Kursrichtung?
+  function topicStats() {
+    const agg = {};
+    for (const it of NW.items) {
+      const a = agg[it.topic] || (agg[it.topic] = {n:0, lag:[], priced:0, r5:[], r15:[], hit:0, hitN:0, first:[]});
+      a.n++; if (!it.old) a.lag.push(it.lag);
+      for (const s of Object.keys(it.base)) {
+        const pre = it.pre[s]; if (pre != null && Math.abs(pre) >= 0.3 && Math.sign(pre) === Math.sign(it.sent)) a.priced++;
+        const rx = it.rx[s] || {}, dir = Math.sign(it.sent) || 1;
+        if (rx[5] != null) a.r5.push(rx[5] * dir);
+        if (rx[15] != null) { a.r15.push(rx[15] * dir); if (Math.abs(it.sent) >= 0.2) { a.hitN++; if (Math.sign(rx[15]) === Math.sign(it.sent)) a.hit++; } }
+        if (it.first[s] != null) a.first.push(it.first[s]);
+      }
+    }
+    return agg;
+  }
+  let calibCache = {}, calibAt = 0;
+  function calib(topic) {
+    if (Date.now() - calibAt > 60000) { calibCache = topicStats(); calibAt = Date.now(); }
+    const a = calibCache[topic]; if (!a || a.hitN < 8) return 1;
+    return clamp((a.hit / a.hitN) / 0.5, 0.3, 1.5);
+  }
+
+  // ---------- Makro: GDELT ----------
+  const THEMES = [
+    {id:"zoelle", name:"Zölle & Handel", q:'(tariff OR tariffs OR "trade war" OR "export controls")', sec:["IND","MAT","CD","IT"]},
+    {id:"zb", name:"Zentralbanken", q:'("Federal Reserve" OR FOMC OR "rate cut" OR "rate hike" OR ECB OR Powell)', sec:["FIN","RE","UT"]},
+    {id:"krieg", name:"Krieg & Konflikte", q:'(war OR invasion OR airstrike OR missile OR sanctions)', sec:["IND","CD","COM"]},
+    {id:"energie", name:"Öl & Energie", q:'(OPEC OR "oil price" OR "crude oil" OR "natural gas prices")', sec:["EN","UT","CD"]},
+    {id:"konj", name:"Inflation & Konjunktur", q:'(inflation OR CPI OR recession OR "jobs report" OR unemployment)', sec:["CD","FIN","RE"]}];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const series = (j) => { const tl = j && j.timeline && j.timeline[0]; return tl && tl.data ? tl.data.map((x) => +x.value).filter(isFinite) : []; };
+  async function gdelt(mode, q, extra) {
+    const r = await fetch(`https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q + " sourcelang:english")}&mode=${mode}&format=json${extra}`);
+    if (!r.ok) throw new Error("GDELT Status " + r.status);
+    const txt = await r.text(); try { return JSON.parse(txt); } catch (e) { throw new Error("GDELT: " + txt.slice(0, 80)); }
+  }
+  function mktAvg() { const v = SP.map((x) => S.d[x.s] && S.d[x.s].q && S.d[x.s].q.dp).filter((x) => x != null && isFinite(x)); return v.length ? mean(v) : null; }
+  function setMacro(th, m) {
+    const old = NW.macro[th.id];
+    m.level = (m.spike >= 2 && m.tone <= -2) ? "hoch" : (m.spike >= 1.4 || m.tone <= -3) ? "erhöht" : "ruhig";
+    m.at = Date.now(); NW.macro[th.id] = m;
+    if (m.level !== "ruhig" && (!old || old.level !== m.level)) {
+      alarm(th.name, "MAKRO-ALARM", `Berichterstattung ${fmt(m.spike, 1)}× über dem Tagesschnitt, Ton ${fmt(m.tone, 1)}. Betroffen: ${th.sec.map((s) => SECTORS[s]).join(", ")}.`);
+      NW.mEvents.unshift({t:Date.now(), name:th.name, level:m.level, base:mktAvg(), rx:{}});
+    }
+  }
+  async function macroRound() {
+    if (!NW.gdelt || NW.mBusy || S.mode === "stopped" || Date.now() - NW.mLast < 20 * 60000) return;
+    NW.mBusy = true; NW.mLast = Date.now();
+    for (const th of THEMES) {
+      if (S.mode === "demo") {
+        setMacro(th, {spike: 0.7 + Math.random() * (Math.random() < 0.2 ? 2 : 0.8), tone: -4 + Math.random() * 4, heads:[`Demo-Schlagzeile zu ${th.name}`], demo:true});
+        continue;
+      }
+      try {
+        const v = series(await gdelt("timelinevol", th.q, "&timespan=24h")); await sleep(6000);
+        const tn = series(await gdelt("timelinetone", th.q, "&timespan=24h")); await sleep(6000);
+        const al = await gdelt("artlist", th.q, "&timespan=3h&maxrecords=3&sort=datedesc"); await sleep(6000);
+        const spike = v.length > 4 ? mean(v.slice(-2)) / (mean(v) || 1) : 1, tone = tn.length ? mean(tn.slice(-4)) : 0;
+        setMacro(th, {spike, tone, heads:(al.articles || []).map((a) => a.title).filter(Boolean).slice(0, 3), links:(al.articles || []).map((a) => a.url).slice(0, 3)});
+      } catch (e) { NW.macro[th.id] = Object.assign(NW.macro[th.id] || {}, {err:e.message}); await sleep(6000); }
+    }
+    NW.mBusy = false; S.dirty = true;
+  }
+  function macroTrack() {
+    const now = Date.now(), m = mktAvg(); if (m == null) return;
+    for (const ev of NW.mEvents) for (const h of [15, 30, 60]) if (ev.rx[h] == null && ev.base != null && now >= ev.t + h * 60000) ev.rx[h] = m - ev.base;
+  }
+  function macroPenalty(sec) {
+    let p = 0, names = [];
+    for (const th of THEMES) {
+      const m = NW.macro[th.id]; if (!m || m.level === "ruhig" || !m.level) continue;
+      const hit = th.sec.includes(sec), v = m.level === "hoch" ? (hit ? 10 : 4) : (hit ? 4 : 1);
+      p += v; if (hit) names.push(th.name);
+    }
+    return {p: Math.min(p, 20), names};
+  }
+
+  // ---------- Demo: simulierte Nachrichten ----------
+  const DEMO_NEWS = [
+    ["{n} beats quarterly earnings estimates, raises full-year guidance", 1], ["Analyst upgrades {n} to Buy, raises price target", 1],
+    ["{n} announces $5 billion share buyback", 1], ["{n} wins FDA approval for new product", 1],
+    ["{n} misses revenue estimates, cuts outlook", -1], ["{n} faces SEC probe over accounting practices", -1],
+    ["Analyst downgrades {n} to Underperform", -1], ["{n} recalls products, warns of delays", -1], ["{n} to present at investor conference", 0]];
+  function demoNews() {
+    if (Math.random() > 0.35) return;
+    const pool = Math.random() < 0.5 ? S.fav : SP.map((x) => x.s), s = pool[Math.floor(Math.random() * pool.length)];
+    const [tpl, dir] = DEMO_NEWS[Math.floor(Math.random() * DEMO_NEWS.length)], d = S.d[s];
+    if (d) { d.drift = dir * (d.vol0 || 0.002) * (0.4 + Math.random()); if (Math.random() < 0.4 && d.q) d.q.c *= 1 + dir * 0.004; } // teils schon eingepreist
+    addNews({id:"demo-" + Date.now() + s, headline: "[Demo] " + tpl.replace("{n}", INFO[s] ? INFO[s].n : s), summary:"", created_at:new Date(Date.now() - Math.random() * 90000).toISOString(), symbols:[s], source:"demo", url:""}, "demo");
+  }
+
+  // ---------- Darstellung ----------
+  function renderNews() {
+    const st = [];
+    st.push("News: " + (S.mode === "demo" ? "Demo" : NW.state));
+    st.push(NW.items.length + " Meldungen");
+    st.push("Stimmung per " + (NW.llmKey ? "LLM (" + NW.llmModel + ")" : "Wortliste"));
+    if (NW.llmErr) st.push("LLM-Fehler: " + NW.llmErr);
+    if (S.alp.on) st.push("Alpaca-Rundlauf alle " + S.alp.every / 1000 + " s, " + S.alp.rounds + " Durchläufe");
+    $("newsInfo").textContent = st.join(" · ");
+    const mg = $("macro"); mg.replaceChildren();
+    for (const th of THEMES) {
+      const m = NW.macro[th.id] || {}, el = document.createElement("div");
+      el.className = "mtile " + (m.level === "hoch" ? "m-high" : m.level === "erhöht" ? "m-mid" : "");
+      const h = document.createElement("div"); h.className = "sigrow";
+      const b = document.createElement("b"); b.textContent = th.name;
+      const p = document.createElement("span"); p.className = "mlvl"; p.textContent = m.level || (NW.gdelt ? "lädt …" : "aus");
+      h.append(b, p);
+      const v = document.createElement("div"); v.className = "mono small-t";
+      v.textContent = m.err ? "Fehler: " + m.err : m.spike != null ? `Aufmerksamkeit ${fmt(m.spike, 1)}× · Ton ${fmt(m.tone, 1)}` : "";
+      const hd = document.createElement("div"); hd.className = "why"; hd.textContent = (m.heads || []).slice(0, 2).join(" · ");
+      el.append(h, v, hd); mg.appendChild(el);
+    }
+    const tb = $("newsBody"); tb.replaceChildren();
+    for (const it of NW.items.slice(0, 40)) {
+      const tr = document.createElement("tr"), s = it.syms[0], rx = (s && it.rx[s]) || {}, pre = s ? it.pre[s] : null;
+      const td = (v, c) => { const x = document.createElement("td"); x.textContent = v; if (c) x.className = c; tr.appendChild(x); return x; };
+      td(clock(it.pub));
+      td(it.syms.slice(0, 3).join(" ") || "—", "mono");
+      const h = td("", "nhead");
+      if (it.url) { const a = document.createElement("a"); a.href = it.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = it.head; h.appendChild(a); } else h.textContent = it.head;
+      td(it.topic);
+      td(signed(it.sent, ""), "num " + (it.sent > 0.15 ? "up" : it.sent < -0.15 ? "down" : ""));
+      td(it.old ? "alt" : fmt(it.lag, 0) + " s", "num");
+      td(pre == null ? "—" : signed(pre, " %"), "num" + (pre != null && Math.abs(pre) >= 0.3 && Math.sign(pre) === Math.sign(it.sent) ? " red-t" : ""));
+      for (const hz of HZ) td(rx[hz] == null ? (it.old ? "—" : "…") : signed(rx[hz], " %"), "num " + (rx[hz] > 0 ? "up" : rx[hz] < 0 ? "down" : ""));
+      td(s && it.first[s] != null ? fmt(it.first[s], 1) + " min" : "—", "num");
+      tb.appendChild(tr);
+    }
+    if (!NW.items.length) { const tr = document.createElement("tr"), x = document.createElement("td"); x.colSpan = 12; x.className = "muted"; x.textContent = S.alp.on ? "Warte auf Nachrichten …" : "Für Nachrichten oben die Alpaca-Schlüssel eintragen und Live starten."; tr.appendChild(x); tb.appendChild(tr); }
+    const sb = $("newsStats"); sb.replaceChildren();
+    for (const [name, a] of Object.entries(topicStats()).sort((x, y) => y[1].n - x[1].n)) {
+      const tr = document.createElement("tr");
+      [name, a.n, a.lag.length ? fmt(mean(a.lag), 0) + " s" : "—", a.priced, a.r5.length ? signed(mean(a.r5), " %") : "—", a.r15.length ? signed(mean(a.r15), " %") : "—",
+       a.hitN ? Math.round(a.hit / a.hitN * 100) + " % (" + a.hitN + ")" : "—", a.first.length ? fmt(mean(a.first), 1) + " min" : "—"]
+        .forEach((v, i) => { const x = document.createElement("td"); x.textContent = v; if (i) x.className = "num"; tr.appendChild(x); });
+      sb.appendChild(tr);
+    }
+    const mb = $("macroEv"); mb.replaceChildren();
+    for (const ev of NW.mEvents.slice(0, 10)) {
+      const tr = document.createElement("tr");
+      [clock(ev.t), ev.name, ev.level, ...[15, 30, 60].map((h) => ev.rx[h] == null ? "…" : signed(ev.rx[h], " Pkt."))]
+        .forEach((v, i) => { const x = document.createElement("td"); x.textContent = v; if (i > 2) x.className = "num"; tr.appendChild(x); });
+      mb.appendChild(tr);
+    }
+  }
+  function newsLine(sym) {
+    const ns = newsScore(sym), m = macroPenalty(INFO[sym] ? INFO[sym].sec : "");
+    const parts = [];
+    if (ns.top) {
+      const it = ns.top, rx = it.rx[sym] || {}, last = [30, 15, 5, 1].find((h) => rx[h] != null);
+      parts.push(`News ${clock(it.pub)} · ${it.topic} · Stimmung ${signed(it.sent, "")}${last ? " · nach " + last + " Min " + signed(rx[last], " %") : ""}`);
+    }
+    if (m.names.length) parts.push("Makro: " + m.names.join(", "));
+    return {text: parts.join(" · "), neg: ns.score <= -0.3 || m.p >= 10, pos: ns.score >= 0.3};
+  }
+  $("newsLlm").addEventListener("change", () => { NW.llmKey = $("newsLlm").value.trim(); NW.llmErr = ""; S.dirty = true; });
+  $("newsModel").addEventListener("change", () => { NW.llmModel = $("newsModel").value.trim() || "claude-haiku-5-5"; });
+  $("gdeltOn").addEventListener("change", () => { NW.gdelt = $("gdeltOn").checked; NW.mLast = 0; S.dirty = true; });
+  $("alpEvery").addEventListener("change", () => { S.alp.every = +$("alpEvery").value * 1000; });
+  setInterval(() => { alpacaRound(); macroRound(); newsTrack(); macroTrack(); }, 1000);
+
+
+  // ---------- Watchlist-Empfehlung ----------
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  function scan() {
+    const now = Date.now(), maxAge = S.mode === "live" ? 25 * 60000 : Infinity;
+    const rows = SP.filter((x) => { const d = S.d[x.s]; return d && d.q && d.q.pc && d.q.o && now - d.at <= maxAge; });
+    const sec = {}; for (const x of rows) (sec[x.sec] = sec[x.sec] || []).push(S.d[x.s].q.dp);
+    const secAvg = Object.fromEntries(Object.entries(sec).map(([k, v]) => [k, mean(v)]));
+    const res = rows.map((x) => {
+      const d = S.d[x.s], q = d.q, why = [], neg = [];
+      const intra = (q.c - q.o) / q.o * 100, rp = q.h > q.l ? (q.c - q.l) / (q.h - q.l) : 0.5;
+      const rng = (q.h - q.l) / q.pc * 100, rs = q.dp - (secAvg[x.sec] ?? 0);
+      let s = 0;
+      const pI = clamp(intra / 2, 0, 1) * 20; s += pI; if (intra > 0.3) why.push("+" + fmt(intra) + " % seit Eröffnung"); else if (intra < -0.3) neg.push("unter Eröffnung");
+      const pR = rp * 20; s += pR; if (rp >= 0.75) why.push("nahe Tageshoch"); else if (rp <= 0.25) neg.push("nahe Tagestief");
+      if (q.dp >= 0.5 && q.dp <= 4) { s += 15; why.push(signed(q.dp, " %") + " heute"); }
+      else if (q.dp > 4 && q.dp <= 6) s += 8;
+      else if (q.dp > 6) { s -= 10; neg.push("überhitzt (" + signed(q.dp, " %") + ")"); }
+      else if (q.dp < 0) neg.push(signed(q.dp, " %") + " heute");
+      if (rng >= 1.5 && rng <= 5) { s += 15; why.push("gute Schwankung " + fmt(rng, 1) + " %"); }
+      else if (rng >= 0.8 && rng < 1.5) s += 8;
+      else if (rng > 8) { s += 3; neg.push("sehr unruhig"); }
+      else if (rng < 0.8) neg.push("kaum Bewegung");
+      const pS = clamp(rs / 3, 0, 1) * 15; s += pS; if (rs >= 1) why.push("stärker als Sektor (+" + fmt(rs, 1) + ")"); else if (rs <= -1) neg.push("schwächer als Sektor");
+      if (q.o > q.pc * 1.005 && q.l > q.pc) { s += 10; why.push("Gap hält"); }
+      if (d.hist.length >= 2 && d.hist[d.hist.length - 1].p > d.hist[d.hist.length - 2].p) s += 5;
+      const ns = newsScore(x.s), mp = macroPenalty(x.sec);
+      if (ns.n && ns.score >= 0.2) { s += Math.round(ns.score * 10); why.push("News positiv (" + ns.top.topic + ")"); }
+      if (ns.n && ns.score <= -0.2) { s += Math.round(ns.score * 10); neg.push("News negativ (" + ns.top.topic + ")"); }
+      if (mp.p) { s -= Math.round(mp.p / 2); if (mp.names.length) neg.push("Makro: " + mp.names[0]); }
+      const pat = SG.pat[x.s]; if (pat && pat.list.some((p) => p.dir === "down" && p.rel !== "niedrig")) { s -= 15; neg.push("fallendes Muster"); }
+      const dy = DY[x.s];
+      if (dy) {
+        if (dy.st.trendUp) { s += 10; why.push("Tagestrend aufwärts"); }
+        if (dy.st.belowS200) { s -= 10; neg.push("unter 200-Tage-Linie"); }
+        if (dy.sig && dy.sig.n >= 4 && dy.sig.pf > 1.3) { s += 5; why.push("Backtest PF " + fmt(dy.sig.pf, 1)); }
+        if (dy.sig && dy.sig.n >= 4 && dy.sig.pf < 0.8) { s -= 5; neg.push("Backtest schwach"); }
+      }
+      return {x, score: Math.round(clamp(s, 0, 100)), why, neg, dp:q.dp};
+    }).sort((a, b) => b.score - a.score);
+    const top = [], perSec = {};
+    for (const r of res) {
+      if (S.fav.includes(r.x.s)) continue;
+      if ((perSec[r.x.sec] || 0) >= 2) continue;
+      perSec[r.x.sec] = (perSec[r.x.sec] || 0) + 1; top.push(r);
+      if (top.length >= 10) break;
+    }
+    return {top, avoid: res.slice(-5).reverse(), all: res, n: rows.length};
+  }
+  function scanRow(r, i, avoid) {
+    const el = document.createElement("div"); el.className = "scanrow" + (avoid ? " avoid" : "");
+    const rk = document.createElement("div"); rk.className = "rk"; rk.textContent = i + 1;
+    const mid = document.createElement("div"); mid.style.minWidth = "0";
+    const nm = document.createElement("div"); nm.className = "nm";
+    const b = document.createElement("b"); b.textContent = r.x.s;
+    const n = document.createElement("span"); n.className = "muted small-t"; n.textContent = r.x.n + " · " + SECTORS[r.x.sec];
+    const sc = document.createElement("span"); sc.className = "mono small-t"; sc.textContent = "Score " + r.score;
+    nm.append(b, n, sc);
+    const bar = document.createElement("div"); bar.className = "bar"; const bi = document.createElement("i"); bi.style.width = r.score + "%"; bar.appendChild(bi);
+    const chips = document.createElement("div"); chips.className = "chips";
+    (avoid ? r.neg : r.why).slice(0, 4).forEach((w) => { const c = document.createElement("span"); c.textContent = w; chips.appendChild(c); });
+    mid.append(nm, bar, chips);
+    el.append(rk, mid);
+    if (!avoid) { const btn = document.createElement("button"); btn.className = "small"; btn.textContent = "+ Watchlist"; btn.dataset.sym = r.x.s; el.appendChild(btn); }
+    else el.appendChild(document.createElement("span"));
+    return el;
+  }
+  let lastScan = null;
+  function renderScan() {
+    lastScan = scan();
+    $("scanInfo").textContent = lastScan.n + " / " + SP.length + " bewertet";
+    const L = $("scanList");
+    if (lastScan.n < 50) {
+      const p = document.createElement("div"); p.className = "muted small-t";
+      p.textContent = S.mode === "live" ? `Sammle Kurse … Eine verlässliche Empfehlung gibt es ab 50 bewerteten Aktien (aktuell ${lastScan.n}). Nach etwa 15 Minuten sind alle 500 durch.` : "Starte Live oder Demo, damit Kurse geladen werden.";
+      L.replaceChildren(p); $("scanAvoid").replaceChildren(); return;
+    }
+    L.replaceChildren(...lastScan.top.map((r, i) => scanRow(r, i, false)));
+    if (S.tdKey || S.mode === "demo") lastScan.top.slice(0, 5).forEach((r) => wantDaily(r.x.s));
+    $("scanAvoid").replaceChildren(...lastScan.avoid.map((r, i) => scanRow(r, i, true)));
+  }
+  $("scanList").addEventListener("click", (e) => { const b = e.target.closest("button[data-sym]"); if (b) { toggleFav(b.dataset.sym); renderScan(); } });
+  $("scanTop").addEventListener("click", () => {
+    if (!lastScan || lastScan.n < 50) return toast("Noch zu wenige Kurse für eine Empfehlung.");
+    let added = 0;
+    for (const r of lastScan.top) { if (added >= 5 || S.fav.length >= 15) break; toggleFav(r.x.s); added++; }
+    toast(added ? `${added} Aktien zur Watchlist hinzugefügt. Signale und Muster brauchen etwa 15 bzw. 30 Minuten Vorlauf.` : "Die Watchlist ist voll (15). Entferne zuerst schwache Aktien.");
+    renderScan();
+  });
+  let lastAuto = Date.now();
+  function autoOptimize() {
+    if (!$("scanAuto").checked || !lastScan || lastScan.n < 50 || Date.now() - lastAuto < 15 * 60000) return;
+    lastAuto = Date.now();
+    const scoreOf = Object.fromEntries(lastScan.all.map((r) => [r.x.s, r.score]));
+    const removable = S.fav.filter((s) => !S.positions.some((p) => p.sym === s) && !SG.open[s] && scoreOf[s] != null)
+      .sort((a, b) => scoreOf[a] - scoreOf[b]);
+    let swaps = 0;
+    for (const r of lastScan.top) {
+      if (swaps >= 2) break;
+      if (S.fav.length < 15) { toggleFav(r.x.s); swaps++; continue; }
+      const weak = removable.shift();
+      if (!weak || scoreOf[weak] > r.score - 15) break;
+      toggleFav(weak); toggleFav(r.x.s); swaps++;
+      log(r.x.s, `Watchlist optimiert: ${r.x.s} (Score ${r.score}) ersetzt ${weak} (Score ${scoreOf[weak]})`, null);
+    }
+    if (swaps) toast(`Watchlist automatisch optimiert: ${swaps} Änderung(en).`);
+  }
+
+  // ---------- S&P-500-Tabelle ----------
+  const secSel = $("sec");
+  Object.entries(SECTORS).forEach(([k, v]) => secSel.appendChild(new Option(v, k)));
+  function sortVal(x, k) {
+    const d = S.d[x.s], q = d && d.q;
+    switch (k) {
+      case "s": return x.s; case "n": return x.n.toLowerCase(); case "sec": return SECTORS[x.sec];
+      case "c": return q ? q.c : null; case "dp": return q ? q.dp : null;
+      case "pos": return rangePos(q); case "at": return d && d.q ? d.at : null;
+    }
+  }
+  function renderTable() {
+    const term = $("q").value.trim().toLowerCase(), sec = secSel.value, only = $("onlyLoaded").checked;
+    let rows = SP.filter((x) => (!sec || x.sec === sec) && (!term || x.s.toLowerCase().includes(term) || x.n.toLowerCase().includes(term)) && (!only || (S.d[x.s] && S.d[x.s].q)));
+    const {k, dir} = S.sort;
+    rows.sort((a, b) => {
+      const va = sortVal(a, k), vb = sortVal(b, k);
+      if (va == null && vb == null) return a.s.localeCompare(b.s);
+      if (va == null) return 1; if (vb == null) return -1;
+      return (va < vb ? -1 : va > vb ? 1 : 0) * dir;
+    });
+    const frag = document.createDocumentFragment();
+    for (const x of rows) {
+      const d = S.d[x.s], q = d && d.q, tr = document.createElement("tr");
+      const star = document.createElement("button");
+      const on = S.fav.includes(x.s);
+      star.className = "star" + (on ? " on" : ""); star.textContent = on ? "★" : "☆"; star.dataset.sym = x.s;
+      star.setAttribute("aria-label", (on ? "Aus Watchlist entfernen: " : "Zur Watchlist: ") + x.s);
+      const td0 = document.createElement("td"); td0.appendChild(star); tr.appendChild(td0);
+      const cell = (txt, cls) => { const td = document.createElement("td"); td.textContent = txt; if (cls) td.className = cls; tr.appendChild(td); return td; };
+      cell(x.s).style.fontWeight = "700";
+      cell(x.n, "nm").title = x.n;
+      cell(SECTORS[x.sec], "muted");
+      cell(q ? fmt(q.c) : (d && d.err ? "Fehler" : "…"), "num");
+      cell(q ? signed(q.dp, " %") : "", "num " + (q ? (q.dp > 0 ? "up" : q.dp < 0 ? "down" : "") : ""));
+      const tdR = document.createElement("td"), pos = rangePos(q);
+      if (pos != null) { const m = document.createElement("span"); m.className = "mini"; const i = document.createElement("i"); i.style.left = pos + "%"; m.appendChild(i); tdR.appendChild(m); }
+      tr.appendChild(tdR);
+      cell(q ? clock(d.at) : "", "num muted");
+      frag.appendChild(tr);
+    }
+    $("spBody").replaceChildren(frag);
+    $("spCount").textContent = rows.length + " von " + SP.length + " Aktien angezeigt";
+    document.querySelectorAll("#spTable th button").forEach((b) => {
+      const th = b.parentElement, active = b.dataset.sort === k;
+      th.setAttribute("aria-sort", active ? (dir > 0 ? "ascending" : "descending") : "none");
+      b.textContent = b.textContent.replace(/ [▲▼]$/, "") + (active ? (dir > 0 ? " ▲" : " ▼") : "");
+    });
+  }
+  $("spBody").addEventListener("click", (e) => { const b = e.target.closest("button.star"); if (b) toggleFav(b.dataset.sym); });
+  document.querySelectorAll("#spTable th button").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.sort;
+    S.sort = S.sort.k === k ? {k, dir:-S.sort.dir} : {k, dir: ["s","n","sec"].includes(k) ? 1 : -1};
+    renderTable();
+  }));
+  ["q", "sec", "onlyLoaded"].forEach((id) => $(id).addEventListener("input", renderTable));
+
+  function renderMovers() {
+    const loaded = SP.filter((x) => S.d[x.s] && S.d[x.s].q);
+    const by = [...loaded].sort((a, b) => S.d[b.s].q.dp - S.d[a.s].q.dp);
+    const li = (x) => {
+      const el = document.createElement("li"), a = document.createElement("span"), b = document.createElement("span"), dp = S.d[x.s].q.dp;
+      a.textContent = x.s + " · " + x.n; a.style.cssText = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0";
+      b.textContent = signed(dp, " %"); b.className = "mono " + (dp > 0 ? "up" : dp < 0 ? "down" : "");
+      el.append(a, b); return el;
+    };
+    $("topUp").replaceChildren(...by.filter((x) => S.d[x.s].q.dp > 0).slice(0, 5).map(li));
+    $("topDown").replaceChildren(...by.filter((x) => S.d[x.s].q.dp < 0).slice(-5).reverse().map(li));
+    const agg = {};
+    for (const x of loaded) { (agg[x.sec] = agg[x.sec] || []).push(S.d[x.s].q.dp); }
+    const secRows = Object.entries(agg).map(([k, v]) => [k, mean(v), v.length]).sort((a, b) => b[1] - a[1]);
+    $("sectors").replaceChildren(...secRows.map(([k, m, n]) => {
+      const el = document.createElement("li"), a = document.createElement("span"), b = document.createElement("span");
+      a.textContent = SECTORS[k] + " (" + n + ")"; b.textContent = signed(m, " %"); b.className = "mono " + (m > 0 ? "up" : m < 0 ? "down" : "");
+      el.append(a, b); return el;
+    }));
+    if (!loaded.length) [$("topUp"), $("topDown"), $("sectors")].forEach((ol) => { const e = document.createElement("li"); e.className = "muted"; e.textContent = "Noch keine Kurse geladen."; ol.replaceChildren(e); });
+    const n = loaded.length;
+    $("spInfo").textContent = n + " / " + SP.length + " geladen";
+    $("spBar").style.width = (n / SP.length * 100) + "%";
+    const others = SP.length - S.fav.filter((s) => INFO[s]).length;
+    const perMin = Math.max(1, 60000 / RATE_MS - S.fav.length * (60 / INTERVAL));
+    $("spNote").textContent = S.mode === "live"
+      ? `Live: Watchlist alle ${INTERVAL} s, übrige ${others} Aktien reihum. Ein kompletter Durchlauf dauert etwa ${Math.ceil(others / perMin)} Minuten.`
+      : S.mode === "demo" ? "Demo: alle Kurse sind simuliert und werden alle 30 Sekunden neu erzeugt." : "Gestoppt.";
+    $("favInfo").textContent = S.fav.length + " / 15";
+  }
+
+  // ---------- Alarme ----------
+  function checkAlerts() {
+    for (const sym of S.fav) {
+      const a = S.alerts[sym], d = S.d[sym];
+      if (!a || !d || !d.q) continue;
+      const c = d.q.c, hit = (a.above && c >= a.above) || (a.below && c <= a.below);
+      if (hit && !a.hit) toast(`${sym} hat deine Schwelle erreicht: ${usd(c)}`);
+      a.hit = !!hit;
+    }
+  }
+  function trimToasts() { const box = $("toasts"); while (box.children.length > 3) box.firstElementChild.remove(); }
+  function toast(msg) {
+    const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+    $("toasts").appendChild(t); setTimeout(() => t.remove(), 8000); trimToasts();
+  }
+
+  // ---------- Übungsdepot ----------
+  const price = (sym) => S.d[sym] && S.d[sym].q ? S.d[sym].q.c : null;
+  const pnlOf = (p, c) => Math.max(-p.amt, (c - p.entry) / p.entry * p.lev * p.amt);
+  function buy() {
+    const sym = $("tSym").value, amt = parseFloat($("tAmt").value), lev = +$("tLev").value, c = price(sym);
+    if (!sym) return toast("Setze zuerst eine Aktie mit ★ auf die Watchlist.");
+    if (!c) return toast("Für " + sym + " gibt es noch keinen Kurs. Starte Live oder Demo.");
+    if (!(amt > 0) || amt > S.cash) return toast("Nicht genug freies Spielgeld für diesen Einsatz.");
+    S.cash -= amt;
+    S.positions.push({id:Math.random().toString(36).slice(2), sym, entry:c, amt, lev, ko: lev > 1 ? c * (1 - 1 / lev) : null});
+    log(sym, `Gekauft zu ${usd(c)}, Einsatz ${usd(amt)}${lev > 1 ? ", Hebel " + lev : ""}`, null);
+    renderDepot();
+  }
+  function close(id, reason) {
+    const i = S.positions.findIndex((p) => p.id === id); if (i < 0) return;
+    const p = S.positions[i], c = price(p.sym), r = reason === "ko" ? -p.amt : pnlOf(p, c);
+    S.cash += p.amt + r; S.positions.splice(i, 1);
+    S.closed.push({r, ko: reason === "ko"});
+    log(p.sym, reason === "ko" ? `Ausgeknockt bei ${usd(c)}, Einsatz verloren` : `Verkauft zu ${usd(c)}`, r);
+    if (reason === "ko") toast(`${p.sym}: Knock-out! Der Einsatz von ${usd(p.amt)} ist weg.`);
+  }
+  function checkPositions() {
+    for (const p of [...S.positions]) { const c = price(p.sym); if (p.ko && c != null && c <= p.ko) close(p.id, "ko"); }
+  }
+  const histRows = [];
+  function log(sym, text, r) {
+    histRows.unshift({t:new Date().toLocaleTimeString("de-AT"), sym, text, r});
+    if (histRows.length > 50) histRows.pop();
+  }
+  function resetDepot() { S.cash = START_CASH; S.positions = []; S.closed = []; histRows.length = 0; }
+  function renderDepot() {
+    const tb = $("pos"); tb.replaceChildren();
+    let open = 0;
+    for (const p of S.positions) {
+      const c = price(p.sym), r = c == null ? 0 : pnlOf(p, c); open += p.amt + r;
+      const tr = document.createElement("tr");
+      [p.sym, usd(p.entry), usd(c), p.ko ? usd(p.ko) : "—", p.lev + "×", usd(p.amt), signed(r, " $")].forEach((v, i) => {
+        const td = document.createElement("td"); td.textContent = v; if (i) td.className = "num";
+        if (i === 6) td.classList.add(r > 0 ? "up" : r < 0 ? "down" : "x"); tr.appendChild(td); });
+      const td = document.createElement("td"), b = document.createElement("button");
+      b.className = "small"; b.textContent = "Verkaufen"; b.addEventListener("click", () => { close(p.id); renderDepot(); });
+      td.appendChild(b); tr.appendChild(td); tb.appendChild(tr);
+    }
+    if (!S.positions.length) { const tr = document.createElement("tr"), td = document.createElement("td"); td.colSpan = 8; td.className = "muted"; td.textContent = "Keine offenen Positionen. Wähle eine Aktie aus deiner Watchlist, einen Einsatz und optional einen Hebel."; tr.appendChild(td); tb.appendChild(tr); }
+    const total = S.cash + open, pnl = total - START_CASH;
+    $("sTotal").textContent = usd(total); $("sCash").textContent = usd(S.cash);
+    $("sPnl").textContent = signed(pnl, " $"); $("sPnl").className = pnl > 0 ? "up" : pnl < 0 ? "down" : "";
+    $("sTrades").textContent = S.closed.length;
+    const wins = S.closed.filter((c) => c.r > 0).length;
+    $("sWin").textContent = S.closed.length ? Math.round(wins / S.closed.length * 100) + " %" : "—";
+    $("sKo").textContent = S.closed.filter((c) => c.ko).length;
+    const hb = $("hist"); hb.replaceChildren();
+    for (const h of histRows) {
+      const tr = document.createElement("tr");
+      [h.t, h.sym, h.text, h.r == null ? "" : signed(h.r, " $")].forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i === 3) td.className = "num " + (h.r > 0 ? "up" : h.r < 0 ? "down" : ""); tr.appendChild(td); });
+      hb.appendChild(tr);
+    }
+  }
+  function fillSelect() {
+    const sel = $("tSym"), cur = sel.value; sel.replaceChildren(...S.fav.map((s) => new Option(s, s)));
+    if (S.fav.includes(cur)) sel.value = cur;
+  }
+
+  // ---------- Steuerung ----------
+  let lastTable = 0;
+  function uiTick() {
+    const now = Date.now();
+    if (S.mode === "demo" && now >= S.demoNext) demoRound();
+    if (S.dirty) {
+      S.dirty = false;
+      checkPositions(); checkAlerts();
+      S.fav.forEach(renderCard); renderDepot(); renderMovers(); renderSignals(); renderPatterns(); renderAlarm(); renderBacktest(); renderNews();
+      $("last").textContent = "Stand " + clock(now);
+    }
+    if (S.tableDirty && now - lastTable > 2500) { S.tableDirty = false; lastTable = now; renderTable(); renderScan(); autoOptimize(); refreshDays(); }
+    let left = null;
+    if (S.mode === "demo") left = Math.ceil((S.demoNext - now) / 1000);
+    if (S.mode === "live" && S.fav.length) left = Math.max(0, Math.ceil(Math.min(...S.fav.map((s) => (S.d[s] ? S.d[s].at : 0) + INTERVAL * 1000 - now)) / 1000));
+    $("countdown").textContent = left == null ? "" : "Watchlist: nächste Aktualisierung in " + left + " s";
+    if (S.mode === "live" && now < S.pausedUntil) $("countdown").textContent = "Kurze Pause wegen Abruflimit …";
+  }
+  function start(mode) {
+    if (mode === "live") {
+      S.key = $("key").value.trim();
+      S.alp.key = $("alpKey").value.trim(); S.alp.sec = $("alpSec").value.trim(); S.alp.every = +$("alpEvery").value * 1000;
+      S.alp.on = !!(S.alp.key && S.alp.sec); S.alp.last = 0; S.alp.pause = 0;
+      if (!S.key && !S.alp.on) return toast("Trage Alpaca-Schlüssel oder einen Finnhub-Schlüssel ein, oder starte die Demo.");
+      NW.llmKey = $("newsLlm").value.trim(); NW.llmModel = $("newsModel").value.trim() || "claude-haiku-5-5";
+    }
+    showErr("");
+    if (S.mode !== mode) {
+      S.d = {}; S.rot = 0;
+      SG.an = {}; SG.open = {}; SG.log = []; SG.done = []; SG.flash = {}; SG.pat = {}; SG.seen = {}; SG.track = []; SG.plog = []; SG.alarms = []; SG.used = {}; SG.alarmUntil = {}; SG.seenDay = {};
+      for (const k in DY) delete DY[k]; S.dq = []; S.dfail = {};
+      NW.items = []; NW.ids = new Set(); NW.macro = {}; NW.mEvents = []; if (NW.ws) { const w = NW.ws; NW.ws = null; w.onclose = null; w.close(); NW.state = "aus"; }
+      Object.values(cards).forEach((c) => c.remove()); for (const k in cards) delete cards[k];
+      if (S.positions.length || S.closed.length) { resetDepot(); toast("Datenquelle gewechselt: Übungsdepot wurde zurückgesetzt."); }
+    }
+    S.mode = mode;
+    if (mode === "demo") { // Vorlauf, damit Trend und RSI sofort etwas zeigen
+      const now = Date.now();
+      S.seeding = true;
+      for (let i = 160; i >= 1; i--) S.fav.forEach((s) => store(s, demoQuote(s), now - i * INTERVAL * 1000));
+      S.fav.forEach(wantDaily);
+      S.seeding = false; SG.log = []; SG.done = []; SG.open = {}; SG.flash = {}; SG.track = []; SG.plog = [];
+      demoRound();
+    }
+    $("mode").textContent = mode === "demo" ? "Demo (simulierte Kurse)" : "Live (" + [S.alp.on && "Alpaca", S.key && "Finnhub"].filter(Boolean).join(" + ") + ")";
+    NW.mLast = 0;
+    if (mode === "live" && S.alp.on) { newsBackfill(); newsConnect(); }
+    $("dot").className = "dot live";
+    clearInterval(S.pump);
+    if (mode === "live") S.pump = setInterval(pump, RATE_MS);
+    S.dirty = true; S.tableDirty = true; uiTick();
+  }
+  function stop() {
+    clearInterval(S.pump); S.mode = "stopped";
+    if (NW.ws) { const w = NW.ws; NW.ws = null; w.onclose = null; w.close(); NW.state = "aus"; }
+    $("mode").textContent = "Gestoppt"; $("dot").className = "dot"; S.dirty = true;
+  }
+
+  $("startLive").addEventListener("click", () => { start("live"); S.tdKey = $("tdKey").value.trim() || S.tdKey; if (S.tdKey) { S.fav.forEach(wantDaily); pumpDaily(); } });
+  $("startDemo").addEventListener("click", () => start("demo"));
+  $("stop").addEventListener("click", stop);
+  $("buy").addEventListener("click", buy);
+  $("alarmOk").addEventListener("click", () => { SG.alarms = []; SG.alarmUntil = {}; renderAlarm(); S.dirty = true; });
+  $("reset").addEventListener("click", () => { resetDepot(); renderDepot(); });
+
+  fillSelect(); S.fav.forEach(renderCard);
+  S.ui = setInterval(uiTick, 1000);
+  setInterval(pumpDaily, 8000);
+  start("demo"); // öffnet mit Beispielkursen, damit die Seite sofort etwas zeigt
+})();
+</script>
+</body>
+</html>
